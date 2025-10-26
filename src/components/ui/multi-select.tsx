@@ -79,13 +79,13 @@ export function MultiSelect({
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-1 ">
+      <PopoverContent className="w-full p-1">
         <div className="max-h-60 overflow-auto">
           {options.map((option) => (
             <div
               key={option}
               className={cn(
-                "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground my-0.25",
+                "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
                 selected.includes(option) && "bg-accent"
               )}
               onClick={() => handleSelect(option)}

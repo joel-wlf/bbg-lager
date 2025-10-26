@@ -1,10 +1,11 @@
-import { Link, Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import { Link, Route, BrowserRouter as Router, Routes, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 // Pages
 import LogInScreen from "./LogInScreen";
 import Items from "./pages/Items";
+import Gruppen from "./pages/Gruppen";
 import { pb } from "./lib/pocketbase";
 import AppHeader from "./components/AppHeader";
 
@@ -30,7 +31,7 @@ function App() {
           )}
           <Routes>
             {/* Public Routes */}
-            <Route path='/' element={<LogInScreen />} />
+            <Route path='/' element={isLoggedIn ? <Navigate to="/items" replace /> : <LogInScreen />} />
 
             {/* Protected Routes */}
             <Route
@@ -38,6 +39,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Items />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path='/gruppen'
+              element={
+                <ProtectedRoute>
+                  <Gruppen />
                 </ProtectedRoute>
               }
             />

@@ -3,7 +3,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MultiSelect } from "@/components/ui/multi-select"
-import { Select } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { pb } from "@/lib/pocketbase"
 
 interface ItemFormData {
@@ -72,10 +78,6 @@ export function ItemForm({
     handleInputChange('bild', file)
   }
 
-  const gruppenOptions = gruppen.map(gruppe => ({
-    value: gruppe.id,
-    label: gruppe.name
-  }))
 
   return (
     <div className='space-y-4'>
@@ -116,12 +118,18 @@ export function ItemForm({
         {isLoadingGruppen ? (
           <div className="text-sm text-muted-foreground">Lade Gruppen...</div>
         ) : (
-          <Select
-            options={gruppenOptions}
-            value={formData.gruppe}
-            onChange={(value) => handleInputChange('gruppe', value)}
-            placeholder='Gruppe auswählen...'
-          />
+          <Select value={formData.gruppe} onValueChange={(value) => handleInputChange('gruppe', value)}>
+            <SelectTrigger className="w-full" >
+              <SelectValue placeholder="Gruppe auswählen..." />
+            </SelectTrigger>
+            <SelectContent>
+              {gruppen.map((gruppe) => (
+                <SelectItem key={gruppe.id} value={gruppe.id}>
+                  {gruppe.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
 

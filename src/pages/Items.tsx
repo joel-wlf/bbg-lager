@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getImageUrl, pb } from "@/lib/pocketbase";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import ItemsHeader from "@/components/ItemsHeader";
+import SearchHeader from "@/components/SearchHeader";
 import { ItemsTable } from "@/components/ItemsTable";
 import { ItemDialogs } from "@/components/ItemDialogs";
 
@@ -178,11 +178,12 @@ export default function Items() {
     <div className='min-h-screen bg-gray-50 p-4'>
       <div className='max-w-4xl mx-auto space-y-6'>
         {/* Search Header */}
-        <ItemsHeader
+        <SearchHeader
           searchTerm={searchTerm}
           onSearchTermChange={setSearchTerm}
           onSearch={handleSearch}
           isLoading={isLoading}
+          placeholder="Gegenstände suchen..."
         />
         
         {/* Items Table */}
