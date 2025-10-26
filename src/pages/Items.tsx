@@ -1,21 +1,28 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { pb } from "@/lib/pocketbase";
-import { IconSearch } from "@tabler/icons-react";
-import { type RecordModel } from "pocketbase";
+import { getImageUrl, pb } from "@/lib/pocketbase";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-
+import ItemsHeader from "@/components/ItemsHeader";
 
 export default function Items() {
-  const { logout } = useAuth();
 
   const [items, setItems] = useState<any>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -25,7 +32,7 @@ export default function Items() {
     setIsLoading(true);
     try {
       pb.autoCancellation(false);
-      
+
       let filter = "";
       if (search.trim()) {
         filter = `name ~ "${search}"`;
@@ -33,7 +40,8 @@ export default function Items() {
 
       const resultList = await pb.collection("items").getFullList({
         filter: filter,
-        sort: 'name',
+        sort: "name",
+        expand: "gruppe",
       });
       setItems(resultList);
     } catch (error) {
@@ -47,39 +55,18 @@ export default function Items() {
     e.preventDefault();
     fetchItems(searchTerm);
   };
-  console.log(items)
+  console.log(items);
 
   return (
     <div className='min-h-screen bg-gray-50 p-4'>
       <div className='max-w-4xl mx-auto space-y-6'>
-        {/* Header */}
-        <div className='flex justify-between items-center'>
-          <h1 className='text-2xl font-bold'>Dashboard</h1>
-          <div className='space-x-4'>
-            <Link to='/'>
-              <Button variant='outline'>Home</Button>
-            </Link>
-            <Button onClick={logout} variant='destructive'>
-              Logout
-            </Button>
-          </div>
-        </div>
-
-        {/* Quick Search Card */}
-        <Card>
-          <CardContent>
-            <form onSubmit={handleSearch} className='flex gap-2'>
-              <Input
-                placeholder='Gegenstände suchen...'
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <Button type='submit' disabled={isLoading}>
-                <IconSearch />
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        {/* Search Header */}
+        <ItemsHeader
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          onSearch={handleSearch}
+          isLoading={isLoading}
+        />
         {/* Items Results */}
         {isLoading ? (
           <Card>
@@ -98,70 +85,98 @@ export default function Items() {
             </CardContent>
           </Card>
         ) : (
-          <div className='grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3'>
-            {items.map((item) => (
-              <Card key={item.id}>
-                {/* Item Image */}
-                {item.bild && (
-                  <div className='relative w-full h-48 overflow-hidden rounded-t-lg'>
-                    {/* <img
-                      src={pb.files.getUrl(item, item.bild)}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    /> */}
-                  </div>
-                )}
-
-                <CardHeader className='pb-3'>
-                  <div className='flex justify-between items-start gap-2'>
-                    <CardTitle className='text-lg font-bold text-gray-900 leading-tight'>
-                      {item.name}
-                    </CardTitle>
-                    <Badge
-                      variant={item.bestand > 0 ? "default" : "secondary"}
-                      className='shrink-0'
-                    >
-                      {item.bestand} Stk.
-                    </Badge>
-                  </div>
-
-                  {/* Organisation Badges */}
-                  {item.organisation && item.organisation.length > 0 && (
-                    <div className='flex flex-wrap gap-1 mt-2'>
-                      {item.organisation.map((org, index) => (
-                        <Badge
-                          key={index}
-                          variant='outline'
-                          className='text-xs'
-                        >
-                          {org}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </CardHeader>
-
-                <CardContent className='pt-0 space-y-3'>
-                  {/* Description */}
-                  {item.Anmerkungen && (
-                    <div>
-                      <span className='text-sm text-muted-foreground font-bold'>
-                        Anmerkungen:
-                      </span>
-                      <p className='text-sm text-muted-foreground line-clamp-3'>
-                        {item.Anmerkungen}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card>
+            <CardContent className='p-0'>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Bestand</TableHead>
+                    <TableHead>Bild</TableHead>
+                    <TableHead>Organisation</TableHead>
+                    <TableHead>Gruppe</TableHead>
+                    <TableHead>Anmerkungen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className='font-medium'>{item.name}</TableCell>
+                      <TableCell>{item.bestand} Stk.</TableCell>
+                      <TableCell>
+                        {item.bild ? (
+                          <img
+                            src={getImageUrl("items", item.id, item.bild, true)}
+                            onClick={() => {
+                              setSelectedImage(
+                                getImageUrl("items", item.id, item.bild)
+                              );
+                              setIsImageModalOpen(true);
+                            }}
+                            alt={item.name}
+                            className='w-8 h-8 object-cover rounded cursor-pointer'
+                          />
+                        ) : (
+                          <span className='text-muted-foreground'>-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.organisation && item.organisation.length > 0 ? (
+                          <div className='flex flex-wrap gap-1'>
+                            {item.organisation.map((org, index) => (
+                              <Badge
+                                key={index}
+                                variant='outline'
+                                className='text-xs'
+                              >
+                                {org}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className='text-muted-foreground'>-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.gruppe ? (
+                          <div className='flex flex-wrap gap-1'>
+                            <Badge variant='outline' className='text-xs'>
+                              {item.expand.gruppe.name}
+                            </Badge>
+                          </div>
+                        ) : (
+                          <span className='text-muted-foreground'>-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.Anmerkungen ? (
+                          <span className='text-sm line-clamp-2 max-w-xs'>
+                            {item.Anmerkungen}
+                          </span>
+                        ) : (
+                          <span className='text-muted-foreground'>-</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         )}
       </div>
+      {/* Image Modal */}
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent className='p-3'>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt='Item'
+              className='max-w-full max-h-full '
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
