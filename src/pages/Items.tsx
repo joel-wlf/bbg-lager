@@ -1,19 +1,11 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { getImageUrl, pb } from "@/lib/pocketbase";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ItemsHeader from "@/components/ItemsHeader";
+import { ItemsTable } from "@/components/ItemsTable";
+import { ItemDialogs } from "@/components/ItemDialogs";
 
 export default function Items() {
 
@@ -23,6 +15,23 @@ export default function Items() {
 
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // CRUD Dialog state
+  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
+  const [currentItem, setCurrentItem] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Form data
+  const [formData, setFormData] = useState({
+    name: "",
+    bestand: "",
+    organisation: [] as string[],
+    Anmerkungen: "",
+    gruppe: "",
+    bild: null as File | null
+  });
 
   useEffect(() => {
     fetchItems();
@@ -55,7 +64,115 @@ export default function Items() {
     e.preventDefault();
     fetchItems(searchTerm);
   };
-  console.log(items);
+
+  // Reset form data
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      bestand: "",
+      organisation: [],
+      Anmerkungen: "",
+      gruppe: "",
+      bild: null
+    });
+  };
+
+  // Open create dialog
+  const handleCreate = () => {
+    resetForm();
+    setDialogMode('create');
+    setCurrentItem(null);
+    setIsItemDialogOpen(true);
+  };
+
+  // Open edit dialog
+  const handleEdit = (item: any) => {
+    setFormData({
+      name: item.name || "",
+      bestand: item.bestand?.toString() || "",
+      organisation: Array.isArray(item.organisation) ? item.organisation : [],
+      Anmerkungen: item.Anmerkungen || "",
+      gruppe: item.gruppe || "",
+      bild: null
+    });
+    setDialogMode('edit');
+    setCurrentItem(item);
+    setIsItemDialogOpen(true);
+  };
+
+  // Open delete dialog
+  const handleDelete = (item: any) => {
+    setCurrentItem(item);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Save item (create or update)
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      alert("Name ist erforderlich");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const data = new FormData();
+      data.append('name', formData.name);
+      data.append('bestand', formData.bestand || '0');
+      data.append('Anmerkungen', formData.Anmerkungen);
+      data.append('gruppe', formData.gruppe);
+      
+      // Handle organisation as array
+      if (formData.organisation && formData.organisation.length > 0) {
+        formData.organisation.forEach(org => data.append('organisation', org));
+      }
+
+      if (formData.bild) {
+        data.append('bild', formData.bild);
+      }
+
+      if (dialogMode === 'create') {
+        await pb.collection('items').create(data);
+      } else {
+        await pb.collection('items').update(currentItem.id, data);
+      }
+
+      setIsItemDialogOpen(false);
+      fetchItems(searchTerm);
+    } catch (error) {
+      console.error('Error saving item:', error);
+      alert('Fehler beim Speichern des Gegenstands');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Delete item
+  const handleConfirmDelete = async () => {
+    if (!currentItem) return;
+
+    setIsSaving(true);
+    try {
+      await pb.collection('items').delete(currentItem.id);
+      setIsDeleteDialogOpen(false);
+      fetchItems(searchTerm);
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      alert('Fehler beim Löschen des Gegenstands');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle form data changes
+  const handleFormDataChange = (newFormData: typeof formData) => {
+    setFormData(newFormData);
+  };
+
+  // Handle image modal
+  const handleImageClick = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setIsImageModalOpen(true);
+  };
 
   return (
     <div className='min-h-screen bg-gray-50 p-4'>
@@ -67,104 +184,19 @@ export default function Items() {
           onSearch={handleSearch}
           isLoading={isLoading}
         />
-        {/* Items Results */}
-        {isLoading ? (
-          <Card>
-            <CardContent className='flex items-center justify-center py-8'>
-              <p className='text-gray-500'>Lade Gegenstände...</p>
-            </CardContent>
-          </Card>
-        ) : items.length === 0 ? (
-          <Card>
-            <CardContent className='flex items-center justify-center py-8'>
-              <p className='text-gray-500'>
-                {searchTerm
-                  ? "Keine Gegenstände gefunden."
-                  : "Keine Gegenstände verfügbar."}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className='p-0'>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Bestand</TableHead>
-                    <TableHead>Bild</TableHead>
-                    <TableHead>Organisation</TableHead>
-                    <TableHead>Gruppe</TableHead>
-                    <TableHead>Anmerkungen</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className='font-medium'>{item.name}</TableCell>
-                      <TableCell>{item.bestand} Stk.</TableCell>
-                      <TableCell>
-                        {item.bild ? (
-                          <img
-                            src={getImageUrl("items", item.id, item.bild, true)}
-                            onClick={() => {
-                              setSelectedImage(
-                                getImageUrl("items", item.id, item.bild)
-                              );
-                              setIsImageModalOpen(true);
-                            }}
-                            alt={item.name}
-                            className='w-8 h-8 object-cover rounded cursor-pointer'
-                          />
-                        ) : (
-                          <span className='text-muted-foreground'>-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {item.organisation && item.organisation.length > 0 ? (
-                          <div className='flex flex-wrap gap-1'>
-                            {item.organisation.map((org, index) => (
-                              <Badge
-                                key={index}
-                                variant='outline'
-                                className='text-xs'
-                              >
-                                {org}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className='text-muted-foreground'>-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {item.gruppe ? (
-                          <div className='flex flex-wrap gap-1'>
-                            <Badge variant='outline' className='text-xs'>
-                              {item.expand.gruppe.name}
-                            </Badge>
-                          </div>
-                        ) : (
-                          <span className='text-muted-foreground'>-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {item.Anmerkungen ? (
-                          <span className='text-sm line-clamp-2 max-w-xs'>
-                            {item.Anmerkungen}
-                          </span>
-                        ) : (
-                          <span className='text-muted-foreground'>-</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
+        
+        {/* Items Table */}
+        <ItemsTable
+          items={items}
+          isLoading={isLoading}
+          searchTerm={searchTerm}
+          onCreateItem={handleCreate}
+          onEditItem={handleEdit}
+          onDeleteItem={handleDelete}
+          onImageClick={handleImageClick}
+        />
       </div>
+
       {/* Image Modal */}
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
         <DialogContent className='p-3'>
@@ -177,6 +209,21 @@ export default function Items() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* CRUD Dialogs */}
+      <ItemDialogs
+        isItemDialogOpen={isItemDialogOpen}
+        setIsItemDialogOpen={setIsItemDialogOpen}
+        dialogMode={dialogMode}
+        formData={formData}
+        onFormDataChange={handleFormDataChange}
+        onSave={handleSave}
+        isSaving={isSaving}
+        isDeleteDialogOpen={isDeleteDialogOpen}
+        setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+        currentItem={currentItem}
+        onConfirmDelete={handleConfirmDelete}
+      />
     </div>
   );
 }
