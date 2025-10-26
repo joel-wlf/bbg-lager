@@ -1,8 +1,8 @@
 import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { IconLogout } from "@tabler/icons-react";
-import { pb } from "@/lib/pocketbase";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AppHeaderProps {
   defaultValue?: string;
@@ -10,9 +10,13 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader() {
-  const logout = () => pb.authStore.clear();
-
   const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <div className='mx-auto p-4 sm:p-0 max-w-4xl'>
@@ -29,7 +33,7 @@ export default function AppHeader() {
             </TabsList>
           </Tabs>
         </div>
-        <Button variant='outline' className='ml-auto' onClick={logout}>
+        <Button variant='outline' className='ml-auto' onClick={handleLogout}>
           <IconLogout />
         </Button>
       </div>
