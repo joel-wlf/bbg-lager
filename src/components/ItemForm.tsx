@@ -1,41 +1,41 @@
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { MultiSelect } from "@/components/ui/multi-select"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MultiSelect } from "@/components/ui/multi-select";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { pb } from "@/lib/pocketbase"
+} from "@/components/ui/select";
+import { pb } from "@/lib/pocketbase";
 
 interface ItemFormData {
-  name: string
-  bestand: string
-  organisation: string[]
-  Anmerkungen: string
-  gruppe: string
-  bild: File | null
+  name: string;
+  bestand: string;
+  organisation: string[];
+  Anmerkungen: string;
+  gruppe: string;
+  bild: File | null;
 }
 
 interface ItemFormProps {
-  formData: ItemFormData
-  onFormDataChange: (data: ItemFormData) => void
-  onSave: () => void
-  onCancel: () => void
-  isSaving: boolean
-  mode: 'create' | 'edit'
+  formData: ItemFormData;
+  onFormDataChange: (data: ItemFormData) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  isSaving: boolean;
+  mode: "create" | "edit";
 }
 
 interface Gruppe {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
-const ORGANISATION_OPTIONS = ['Jugend', 'Kinder']
+const ORGANISATION_OPTIONS = ["Jugend", "Kinder"];
 
 export function ItemForm({
   formData,
@@ -43,41 +43,40 @@ export function ItemForm({
   onSave,
   onCancel,
   isSaving,
-  mode
+  mode,
 }: ItemFormProps) {
-  const [gruppen, setGruppen] = useState<Gruppe[]>([])
-  const [isLoadingGruppen, setIsLoadingGruppen] = useState(false)
+  const [gruppen, setGruppen] = useState<Gruppe[]>([]);
+  const [isLoadingGruppen, setIsLoadingGruppen] = useState(false);
 
   useEffect(() => {
-    fetchGruppen()
-  }, [])
+    fetchGruppen();
+  }, []);
 
   const fetchGruppen = async () => {
-    setIsLoadingGruppen(true)
+    setIsLoadingGruppen(true);
     try {
-      const resultList = await pb.collection('gruppen').getFullList({
-        sort: 'name'
-      })
-      setGruppen(resultList.map(item => ({ id: item.id, name: item.name })))
+      const resultList = await pb.collection("gruppen").getFullList({
+        sort: "name",
+      });
+      setGruppen(resultList.map((item) => ({ id: item.id, name: item.name })));
     } catch (error) {
-      console.error('Error fetching gruppen:', error)
+      console.error("Error fetching gruppen:", error);
     } finally {
-      setIsLoadingGruppen(false)
+      setIsLoadingGruppen(false);
     }
-  }
+  };
 
   const handleInputChange = (field: keyof ItemFormData, value: any) => {
     onFormDataChange({
       ...formData,
-      [field]: value
-    })
-  }
+      [field]: value,
+    });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null
-    handleInputChange('bild', file)
-  }
-
+    const file = e.target.files?.[0] || null;
+    handleInputChange("bild", file);
+  };
 
   return (
     <div className='space-y-4'>
@@ -86,29 +85,29 @@ export function ItemForm({
         <Input
           id='name'
           value={formData.name}
-          onChange={(e) => handleInputChange('name', e.target.value)}
+          onChange={(e) => handleInputChange("name", e.target.value)}
           placeholder='Name des Gegenstands'
         />
       </div>
 
       <div>
-        <Label htmlFor='bestand'>Bestand</Label>
+        <Label htmlFor='bestand'>Bestand *</Label>
         <Input
           id='bestand'
           type='number'
           value={formData.bestand}
-          onChange={(e) => handleInputChange('bestand', e.target.value)}
+          onChange={(e) => handleInputChange("bestand", e.target.value)}
           placeholder='Anzahl'
-          min='0'
+          min='1'
         />
       </div>
 
       <div>
-        <Label htmlFor='organisation'>Organisation</Label>
+        <Label htmlFor='organisation'>Organisation *</Label>
         <MultiSelect
           options={ORGANISATION_OPTIONS}
           selected={formData.organisation}
-          onChange={(selected) => handleInputChange('organisation', selected)}
+          onChange={(selected) => handleInputChange("organisation", selected)}
           placeholder='Organisation auswählen...'
         />
       </div>
@@ -116,11 +115,14 @@ export function ItemForm({
       <div>
         <Label htmlFor='gruppe'>Gruppe</Label>
         {isLoadingGruppen ? (
-          <div className="text-sm text-muted-foreground">Lade Gruppen...</div>
+          <div className='text-sm text-muted-foreground'>Lade Gruppen...</div>
         ) : (
-          <Select value={formData.gruppe} onValueChange={(value) => handleInputChange('gruppe', value)}>
-            <SelectTrigger className="w-full" >
-              <SelectValue placeholder="Gruppe auswählen..." />
+          <Select
+            value={formData.gruppe}
+            onValueChange={(value) => handleInputChange("gruppe", value)}
+          >
+            <SelectTrigger className='w-full'>
+              <SelectValue placeholder='Gruppe auswählen...' />
             </SelectTrigger>
             <SelectContent>
               {gruppen.map((gruppe) => (
@@ -138,7 +140,7 @@ export function ItemForm({
         <Input
           id='anmerkungen'
           value={formData.Anmerkungen}
-          onChange={(e) => handleInputChange('Anmerkungen', e.target.value)}
+          onChange={(e) => handleInputChange("Anmerkungen", e.target.value)}
           placeholder='Zusätzliche Informationen'
         />
       </div>
@@ -154,17 +156,17 @@ export function ItemForm({
       </div>
 
       <div className='flex justify-end gap-2 pt-4'>
-        <Button 
-          variant='outline' 
-          onClick={onCancel}
-          disabled={isSaving}
-        >
+        <Button variant='outline' onClick={onCancel} disabled={isSaving}>
           Abbrechen
         </Button>
         <Button onClick={onSave} disabled={isSaving}>
-          {isSaving ? 'Wird gespeichert...' : mode === 'create' ? 'Hinzufügen' : 'Speichern'}
+          {isSaving
+            ? "Wird gespeichert..."
+            : mode === "create"
+            ? "Hinzufügen"
+            : "Speichern"}
         </Button>
       </div>
     </div>
-  )
+  );
 }

@@ -2,23 +2,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { IconSearch, IconX } from "@tabler/icons-react";
-import { useState } from "react";
 
-interface SearchHeaderProps {
+interface GruppenHeaderProps {
   searchTerm: string;
   onSearchTermChange: (value: string) => void;
   onSearch?: (e: React.FormEvent) => void;
   isLoading: boolean;
-  placeholder: string;
+  placeholder?: string;
 }
 
-export default function SearchHeader({
+export default function GruppenHeader({
   searchTerm,
   onSearchTermChange,
   onSearch,
   isLoading,
-  placeholder,
-}: SearchHeaderProps) {
+  placeholder = "Gruppen suchen...",
+}: GruppenHeaderProps) {
   return (
     <Card>
       <CardContent>

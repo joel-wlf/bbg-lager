@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { GruppenTable } from "@/components/GruppenTable";
 import { GruppenDialogs } from "@/components/GruppenDialogs";
 import SearchHeader from "@/components/SearchHeader";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function Gruppen() {
   const { user } = useAuth();
@@ -13,6 +14,9 @@ export default function Gruppen() {
   const [gruppen, setGruppen] = useState<any>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Debounce search term with 300ms delay
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // CRUD Dialog state
   const [isGruppeDialogOpen, setIsGruppeDialogOpen] = useState(false);
@@ -31,6 +35,11 @@ export default function Gruppen() {
   useEffect(() => {
     fetchGruppen();
   }, []);
+
+  // Trigger search when debounced search term changes
+  useEffect(() => {
+    fetchGruppen(debouncedSearchTerm);
+  }, [debouncedSearchTerm]);
 
   const fetchGruppen = async (search = "") => {
     setIsLoading(true);

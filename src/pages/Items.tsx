@@ -6,12 +6,16 @@ import { Link } from "react-router-dom";
 import SearchHeader from "@/components/SearchHeader";
 import { ItemsTable } from "@/components/ItemsTable";
 import { ItemDialogs } from "@/components/ItemDialogs";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function Items() {
 
   const [items, setItems] = useState<any>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Debounce search term with 300ms delay
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -36,6 +40,11 @@ export default function Items() {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  // Trigger search when debounced search term changes
+  useEffect(() => {
+    fetchItems(debouncedSearchTerm);
+  }, [debouncedSearchTerm]);
 
   const fetchItems = async (search = "") => {
     setIsLoading(true);
