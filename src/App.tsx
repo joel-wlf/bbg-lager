@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import LogInScreen from "./LogInScreen";
 import Items from "./pages/Items";
 import Kisten from "./pages/Kisten";
+import Entnahmen from "./pages/Entnahmen";
 import AppHeader from "./components/AppHeader";
 
 function AppContent() {
@@ -53,6 +54,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Kisten />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path='/requests'
+            element={
+              <ProtectedRoute>
+                <Entnahmen />
               </ProtectedRoute>
             }
           />
