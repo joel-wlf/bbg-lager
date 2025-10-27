@@ -27,30 +27,6 @@ export function GruppenTable({
   onEditGruppe,
   onDeleteGruppe
 }: GruppenTableProps) {
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className='flex items-center justify-center py-8'>
-          <p className='text-gray-500'>Lade Gruppen...</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (gruppen.length === 0) {
-    return (
-      <Card>
-        <CardContent className='flex items-center justify-center py-8'>
-          <p className='text-gray-500'>
-            {searchTerm
-              ? "Keine Gruppen gefunden."
-              : "Keine Gruppen verfügbar."}
-          </p>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card>
       <CardContent className='p-0'>
@@ -60,6 +36,20 @@ export function GruppenTable({
             Neu
           </Button>
         </div>
+        
+        {isLoading ? (
+          <div className='flex items-center justify-center py-8'>
+            <p className='text-gray-500'>Lade Gruppen...</p>
+          </div>
+        ) : gruppen.length === 0 ? (
+          <div className='flex items-center justify-center py-8'>
+            <p className='text-gray-500'>
+              {searchTerm
+                ? "Keine Gruppen gefunden."
+                : "Keine Gruppen verfügbar."}
+            </p>
+          </div>
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -99,6 +89,7 @@ export function GruppenTable({
             ))}
           </TableBody>
         </Table>
+        )}
       </CardContent>
     </Card>
   )

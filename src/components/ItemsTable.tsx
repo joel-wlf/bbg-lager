@@ -1,6 +1,6 @@
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -8,18 +8,20 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { getImageUrl } from "@/lib/pocketbase"
-import { Edit, Plus, Trash2 } from "lucide-react"
+} from "@/components/ui/table";
+import { getImageUrl } from "@/lib/pocketbase";
+import { IconFilter2 } from "@tabler/icons-react";
+import { Edit, Plus, Trash2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ItemsTableProps {
-  items: any[]
-  isLoading: boolean
-  searchTerm: string
-  onCreateItem: () => void
-  onEditItem: (item: any) => void
-  onDeleteItem: (item: any) => void
-  onImageClick: (imageUrl: string) => void
+  items: any[];
+  isLoading: boolean;
+  searchTerm: string;
+  onCreateItem: () => void;
+  onEditItem: (item: any) => void;
+  onDeleteItem: (item: any) => void;
+  onImageClick: (imageUrl: string) => void;
 }
 
 export function ItemsTable({
@@ -29,41 +31,42 @@ export function ItemsTable({
   onCreateItem,
   onEditItem,
   onDeleteItem,
-  onImageClick
+  onImageClick,
 }: ItemsTableProps) {
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className='flex items-center justify-center py-8'>
-          <p className='text-gray-500'>Lade Gegenstände...</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (items.length === 0) {
-    return (
-      <Card>
-        <CardContent className='flex items-center justify-center py-8'>
-          <p className='text-gray-500'>
-            {searchTerm
-              ? "Keine Gegenstände gefunden."
-              : "Keine Gegenstände verfügbar."}
-          </p>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card>
       <CardContent className='p-0'>
-        <div className='p-4 pt-0 border-b'>
+        <div className='p-4 pt-0 border-b flex gap-2'>
           <Button onClick={onCreateItem} className='flex items-center gap-2'>
             <Plus className='w-4 h-4' />
             Neu
           </Button>
+          <Popover>
+            <PopoverTrigger>
+              <Button variant='outline'>
+                <IconFilter2 />
+                Filter
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent>
+              
+            </PopoverContent>
+          </Popover>
         </div>
+        
+        {isLoading ? (
+          <div className='flex items-center justify-center py-8'>
+            <p className='text-gray-500'>Lade Gegenstände...</p>
+          </div>
+        ) : items.length === 0 ? (
+          <div className='flex items-center justify-center py-8'>
+            <p className='text-gray-500'>
+              {searchTerm
+                ? "Keine Gegenstände gefunden."
+                : "Keine Gegenstände verfügbar."}
+            </p>
+          </div>
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -86,7 +89,7 @@ export function ItemsTable({
                     <img
                       src={getImageUrl("items", item.id, item.bild, true)}
                       onClick={() => {
-                        onImageClick(getImageUrl("items", item.id, item.bild))
+                        onImageClick(getImageUrl("items", item.id, item.bild));
                       }}
                       alt={item.name}
                       className='w-8 h-8 object-cover rounded cursor-pointer'
@@ -156,7 +159,8 @@ export function ItemsTable({
             ))}
           </TableBody>
         </Table>
+        )}
       </CardContent>
     </Card>
-  )
+  );
 }

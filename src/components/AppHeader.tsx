@@ -29,7 +29,7 @@ export default function AppHeader() {
             <TabsList>
               <TabsTrigger value='items'>Gegenstände</TabsTrigger>
               <TabsTrigger value='gruppen'>Gruppen</TabsTrigger>
-              <TabsTrigger value='requests'>Anfragen</TabsTrigger>
+              <TabsTrigger value='requests'>Entnahmen</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
