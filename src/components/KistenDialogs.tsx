@@ -6,34 +6,34 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { GruppenForm } from "./GruppenForm"
+import { KistenForm } from "./KistenForm"
 
-interface GruppenFormData {
+interface KistenFormData {
   name: string
   regal: string
-  kiste: string
+  stellplatz: string
 }
 
-interface GruppenDialogsProps {
-  // Gruppe Dialog
-  isGruppeDialogOpen: boolean
-  setIsGruppeDialogOpen: (open: boolean) => void
+interface KistenDialogsProps {
+  // Kiste Dialog
+  isKisteDialogOpen: boolean
+  setIsKisteDialogOpen: (open: boolean) => void
   dialogMode: 'create' | 'edit'
-  formData: GruppenFormData
-  onFormDataChange: (data: GruppenFormData) => void
+  formData: KistenFormData
+  onFormDataChange: (data: KistenFormData) => void
   onSave: () => void
   isSaving: boolean
 
   // Delete Dialog
   isDeleteDialogOpen: boolean
   setIsDeleteDialogOpen: (open: boolean) => void
-  currentGruppe: any
+  currentKiste: any
   onConfirmDelete: () => void
 }
 
-export function GruppenDialogs({
-  isGruppeDialogOpen,
-  setIsGruppeDialogOpen,
+export function KistenDialogs({
+  isKisteDialogOpen,
+  setIsKisteDialogOpen,
   dialogMode,
   formData,
   onFormDataChange,
@@ -41,31 +41,31 @@ export function GruppenDialogs({
   isSaving,
   isDeleteDialogOpen,
   setIsDeleteDialogOpen,
-  currentGruppe,
+  currentKiste,
   onConfirmDelete
-}: GruppenDialogsProps) {
+}: KistenDialogsProps) {
   return (
     <>
-      {/* Create/Edit Gruppe Dialog */}
-      <Dialog open={isGruppeDialogOpen} onOpenChange={setIsGruppeDialogOpen}>
+      {/* Create/Edit Kiste Dialog */}
+      <Dialog open={isKisteDialogOpen} onOpenChange={setIsKisteDialogOpen}>
         <DialogContent className='max-w-md max-h-[90vh] overflow-y-auto'>
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === 'create' ? 'Neue Gruppe hinzufügen' : 'Gruppe bearbeiten'}
+              {dialogMode === 'create' ? 'Neue Kiste hinzufügen' : 'Kiste bearbeiten'}
             </DialogTitle>
             <DialogDescription>
               {dialogMode === 'create' 
-                ? 'Geben Sie die Details für die neue Gruppe ein.'
-                : 'Bearbeiten Sie die Details der Gruppe.'
+                ? 'Geben Sie die Details für die neue Kiste ein.'
+                : 'Bearbeiten Sie die Details der Kiste.'
               }
             </DialogDescription>
           </DialogHeader>
 
-          <GruppenForm
+          <KistenForm
             formData={formData}
             onFormDataChange={onFormDataChange}
             onSave={onSave}
-            onCancel={() => setIsGruppeDialogOpen(false)}
+            onCancel={() => setIsKisteDialogOpen(false)}
             isSaving={isSaving}
             mode={dialogMode}
           />
@@ -76,9 +76,9 @@ export function GruppenDialogs({
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Gruppe löschen</DialogTitle>
+            <DialogTitle>Kiste löschen</DialogTitle>
             <DialogDescription>
-              Sind Sie sicher, dass Sie die Gruppe "{currentGruppe?.name}" löschen möchten? 
+              Sind Sie sicher, dass Sie die Kiste "{currentKiste?.name}" löschen möchten? 
               Diese Aktion kann nicht rückgängig gemacht werden.
             </DialogDescription>
           </DialogHeader>

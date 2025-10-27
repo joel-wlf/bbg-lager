@@ -3,15 +3,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { pb } from "@/lib/pocketbase";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { GruppenTable } from "@/components/GruppenTable";
-import { GruppenDialogs } from "@/components/GruppenDialogs";
+import { KistenTable } from "@/components/KistenTable";
+import { KistenDialogs } from "@/components/KistenDialogs";
 import SearchHeader from "@/components/SearchHeader";
 import { useDebounce } from "@/hooks/useDebounce";
 
-export default function Gruppen() {
+export default function Kisten() {
   const { user } = useAuth();
 
-  const [gruppen, setGruppen] = useState<any>([]);
+  const [kisten, setKisten] = useState<any>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
@@ -19,29 +19,29 @@ export default function Gruppen() {
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // CRUD Dialog state
-  const [isGruppeDialogOpen, setIsGruppeDialogOpen] = useState(false);
+  const [isKisteDialogOpen, setIsKisteDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
-  const [currentGruppe, setCurrentGruppe] = useState<any>(null);
+  const [currentKiste, setCurrentKiste] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   
   // Form data
   const [formData, setFormData] = useState({
     name: "",
     regal: "",
-    kiste: ""
+    stellplatz: ""
   });
 
   useEffect(() => {
-    fetchGruppen();
+    fetchKisten();
   }, []);
 
   // Trigger search when debounced search term changes
   useEffect(() => {
-    fetchGruppen(debouncedSearchTerm);
+    fetchKisten(debouncedSearchTerm);
   }, [debouncedSearchTerm]);
 
-  const fetchGruppen = async (search = "") => {
+  const fetchKisten = async (search = "") => {
     setIsLoading(true);
     try {
       let filter = "";
@@ -49,14 +49,14 @@ export default function Gruppen() {
         filter = `name ~ "${search}"`;
       }
 
-      const resultList = await pb.collection("gruppen").getList(1, 50, {
+      const resultList = await pb.collection("kisten").getList(1, 50, {
         filter,
         sort: "name",
       });
 
-      setGruppen(resultList.items);
+      setKisten(resultList.items);
     } catch (error) {
-      console.error("Error fetching gruppen:", error);
+      console.error("Error fetching kisten:", error);
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +64,7 @@ export default function Gruppen() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchGruppen(searchTerm);
+    fetchKisten(searchTerm);
   };
 
   // Reset form data
@@ -72,7 +72,7 @@ export default function Gruppen() {
     setFormData({
       name: "",
       regal: "",
-      kiste: ""
+      stellplatz: ""
     });
   };
 
@@ -80,29 +80,29 @@ export default function Gruppen() {
   const handleCreate = () => {
     resetForm();
     setDialogMode('create');
-    setCurrentGruppe(null);
-    setIsGruppeDialogOpen(true);
+    setCurrentKiste(null);
+    setIsKisteDialogOpen(true);
   };
 
   // Open edit dialog
-  const handleEdit = (gruppe: any) => {
+  const handleEdit = (kiste: any) => {
     setFormData({
-      name: gruppe.name || "",
-      regal: gruppe.regal?.toString() || "",
-      kiste: gruppe.kiste?.toString() || ""
+      name: kiste.name || "",
+      regal: kiste.regal?.toString() || "",
+      stellplatz: kiste.stellplatz?.toString() || ""
     });
     setDialogMode('edit');
-    setCurrentGruppe(gruppe);
-    setIsGruppeDialogOpen(true);
+    setCurrentKiste(kiste);
+    setIsKisteDialogOpen(true);
   };
 
   // Open delete dialog
-  const handleDelete = (gruppe: any) => {
-    setCurrentGruppe(gruppe);
+  const handleDelete = (kiste: any) => {
+    setCurrentKiste(kiste);
     setIsDeleteDialogOpen(true);
   };
 
-  // Save gruppe (create or update)
+  // Save kiste (create or update)
   const handleSave = async () => {
     if (!formData.name.trim()) {
       alert("Name ist erforderlich");
@@ -114,37 +114,37 @@ export default function Gruppen() {
       const data = {
         name: formData.name,
         regal: parseInt(formData.regal) || 0,
-        kiste: parseInt(formData.kiste) || 0
+        stellplatz: parseInt(formData.stellplatz) || 0
       };
 
       if (dialogMode === 'create') {
-        await pb.collection('gruppen').create(data);
+        await pb.collection('kisten').create(data);
       } else {
-        await pb.collection('gruppen').update(currentGruppe.id, data);
+        await pb.collection('kisten').update(currentKiste.id, data);
       }
 
-      setIsGruppeDialogOpen(false);
-      fetchGruppen(searchTerm);
+      setIsKisteDialogOpen(false);
+      fetchKisten(searchTerm);
     } catch (error) {
-      console.error('Error saving gruppe:', error);
-      alert('Fehler beim Speichern der Gruppe');
+      console.error('Error saving kiste:', error);
+      alert('Fehler beim Speichern der Kiste');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Delete gruppe
+  // Delete kiste
   const handleConfirmDelete = async () => {
-    if (!currentGruppe) return;
+    if (!currentKiste) return;
 
     setIsSaving(true);
     try {
-      await pb.collection('gruppen').delete(currentGruppe.id);
+      await pb.collection('kisten').delete(currentKiste.id);
       setIsDeleteDialogOpen(false);
-      fetchGruppen(searchTerm);
+      fetchKisten(searchTerm);
     } catch (error) {
-      console.error('Error deleting gruppe:', error);
-      alert('Fehler beim Löschen der Gruppe');
+      console.error('Error deleting kiste:', error);
+      alert('Fehler beim Löschen der Kiste');
     } finally {
       setIsSaving(false);
     }
@@ -163,7 +163,7 @@ export default function Gruppen() {
             Nicht angemeldet
           </h1>
           <p className="text-gray-600 mb-6">
-            Sie müssen sich anmelden, um Gruppen zu verwalten.
+            Sie müssen sich anmelden, um Kisten zu verwalten.
           </p>
           <Link
             to="/login"
@@ -185,24 +185,24 @@ export default function Gruppen() {
           onSearchTermChange={setSearchTerm}
           onSearch={handleSearch}
           isLoading={isLoading}
-          placeholder="Gruppen suchen..."
+          placeholder="Kisten suchen..."
         />
         
-        {/* Gruppen Table */}
-        <GruppenTable
-          gruppen={gruppen}
+        {/* Kisten Table */}
+        <KistenTable
+          kisten={kisten}
           isLoading={isLoading}
           searchTerm={searchTerm}
-          onCreateGruppe={handleCreate}
-          onEditGruppe={handleEdit}
-          onDeleteGruppe={handleDelete}
+          onCreateKiste={handleCreate}
+          onEditKiste={handleEdit}
+          onDeleteKiste={handleDelete}
         />
       </div>
 
       {/* CRUD Dialogs */}
-      <GruppenDialogs
-        isGruppeDialogOpen={isGruppeDialogOpen}
-        setIsGruppeDialogOpen={setIsGruppeDialogOpen}
+      <KistenDialogs
+        isKisteDialogOpen={isKisteDialogOpen}
+        setIsKisteDialogOpen={setIsKisteDialogOpen}
         dialogMode={dialogMode}
         formData={formData}
         onFormDataChange={handleFormDataChange}
@@ -210,7 +210,7 @@ export default function Gruppen() {
         isSaving={isSaving}
         isDeleteDialogOpen={isDeleteDialogOpen}
         setIsDeleteDialogOpen={setIsDeleteDialogOpen}
-        currentGruppe={currentGruppe}
+        currentKiste={currentKiste}
         onConfirmDelete={handleConfirmDelete}
       />
     </div>

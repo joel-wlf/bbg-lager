@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { IconSearch, IconX } from "@tabler/icons-react";
 
-interface GruppenHeaderProps {
+interface KistenHeaderProps {
   searchTerm: string;
   onSearchTermChange: (value: string) => void;
   onSearch?: (e: React.FormEvent) => void;
@@ -11,13 +11,13 @@ interface GruppenHeaderProps {
   placeholder?: string;
 }
 
-export default function GruppenHeader({
+export default function KistenHeader({
   searchTerm,
   onSearchTermChange,
   onSearch,
   isLoading,
-  placeholder = "Gruppen suchen...",
-}: GruppenHeaderProps) {
+  placeholder = "Kisten suchen...",
+}: KistenHeaderProps) {
   return (
     <Card>
       <CardContent>

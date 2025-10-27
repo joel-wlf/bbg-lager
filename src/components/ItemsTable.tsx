@@ -10,9 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getImageUrl } from "@/lib/pocketbase";
-import { IconFilter2 } from "@tabler/icons-react";
 import { Edit, Plus, Trash2 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ItemsTableProps {
   items: any[];
@@ -41,17 +39,6 @@ export function ItemsTable({
             <Plus className='w-4 h-4' />
             Neu
           </Button>
-          <Popover>
-            <PopoverTrigger>
-              <Button variant='outline'>
-                <IconFilter2 />
-                Filter
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent>
-              
-            </PopoverContent>
-          </Popover>
         </div>
         
         {isLoading ? (
@@ -74,7 +61,7 @@ export function ItemsTable({
               <TableHead>Bestand</TableHead>
               <TableHead>Bild</TableHead>
               <TableHead>Organisation</TableHead>
-              <TableHead>Gruppe</TableHead>
+              <TableHead>Kiste</TableHead>
               <TableHead>Anmerkungen</TableHead>
               <TableHead>Aktionen</TableHead>
             </TableRow>
@@ -116,10 +103,10 @@ export function ItemsTable({
                   )}
                 </TableCell>
                 <TableCell>
-                  {item.gruppe ? (
+                  {item.kiste ? (
                     <div className='flex flex-wrap gap-1'>
                       <Badge variant='outline' className='text-xs'>
-                        {item.expand?.gruppe?.name || item.gruppe}
+                        {item.expand?.kiste?.name || item.kiste}
                       </Badge>
                     </div>
                   ) : (

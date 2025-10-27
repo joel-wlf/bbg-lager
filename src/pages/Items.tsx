@@ -33,7 +33,7 @@ export default function Items() {
     bestand: "",
     organisation: [] as string[],
     Anmerkungen: "",
-    gruppe: "",
+    kiste: "",
     bild: null as File | null
   });
 
@@ -59,7 +59,7 @@ export default function Items() {
       const resultList = await pb.collection("items").getFullList({
         filter: filter,
         sort: "name",
-        expand: "gruppe",
+        expand: "kiste",
       });
       setItems(resultList);
     } catch (error) {
@@ -81,7 +81,7 @@ export default function Items() {
       bestand: "",
       organisation: [],
       Anmerkungen: "",
-      gruppe: "",
+      kiste: "",
       bild: null
     });
   };
@@ -101,7 +101,7 @@ export default function Items() {
       bestand: item.bestand?.toString() || "",
       organisation: Array.isArray(item.organisation) ? item.organisation : [],
       Anmerkungen: item.Anmerkungen || "",
-      gruppe: item.gruppe || "",
+      kiste: item.kiste || "",
       bild: null
     });
     setDialogMode('edit');
@@ -128,7 +128,7 @@ export default function Items() {
       data.append('name', formData.name);
       data.append('bestand', formData.bestand || '0');
       data.append('Anmerkungen', formData.Anmerkungen);
-      data.append('gruppe', formData.gruppe);
+      data.append('kiste', formData.kiste);
       
       // Handle organisation as array
       if (formData.organisation && formData.organisation.length > 0) {

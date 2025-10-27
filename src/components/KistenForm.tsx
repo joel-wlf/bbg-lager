@@ -2,30 +2,30 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-interface GruppenFormData {
+interface KistenFormData {
   name: string
   regal: string
-  kiste: string
+  stellplatz: string
 }
 
-interface GruppenFormProps {
-  formData: GruppenFormData
-  onFormDataChange: (data: GruppenFormData) => void
+interface KistenFormProps {
+  formData: KistenFormData
+  onFormDataChange: (data: KistenFormData) => void
   onSave: () => void
   onCancel: () => void
   isSaving: boolean
   mode: 'create' | 'edit'
 }
 
-export function GruppenForm({
+export function KistenForm({
   formData,
   onFormDataChange,
   onSave,
   onCancel,
   isSaving,
   mode
-}: GruppenFormProps) {
-  const handleInputChange = (field: keyof GruppenFormData, value: string) => {
+}: KistenFormProps) {
+  const handleInputChange = (field: keyof KistenFormData, value: string) => {
     onFormDataChange({
       ...formData,
       [field]: value
@@ -40,7 +40,7 @@ export function GruppenForm({
           id='name'
           value={formData.name}
           onChange={(e) => handleInputChange('name', e.target.value)}
-          placeholder='Name der Gruppe'
+          placeholder='Name der Kiste'
         />
       </div>
 
@@ -57,13 +57,13 @@ export function GruppenForm({
       </div>
 
       <div>
-        <Label htmlFor='kiste'>Kiste</Label>
+        <Label htmlFor='stellplatz'>Stellplatz</Label>
         <Input
-          id='kiste'
+          id='stellplatz'
           type='number'
-          value={formData.kiste}
-          onChange={(e) => handleInputChange('kiste', e.target.value)}
-          placeholder='Kiste Nummer'
+          value={formData.stellplatz}
+          onChange={(e) => handleInputChange('stellplatz', e.target.value)}
+          placeholder='Stellplatz Nummer'
           min='0'
         />
       </div>

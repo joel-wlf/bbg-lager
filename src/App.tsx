@@ -11,7 +11,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 // Pages
 import LogInScreen from "./LogInScreen";
 import Items from "./pages/Items";
-import Gruppen from "./pages/Gruppen";
+import Kisten from "./pages/Kisten";
 import AppHeader from "./components/AppHeader";
 
 function AppContent() {
@@ -49,10 +49,10 @@ function AppContent() {
             }
           />
           <Route
-            path='/gruppen'
+            path='/kisten'
             element={
               <ProtectedRoute>
-                <Gruppen />
+                <Kisten />
               </ProtectedRoute>
             }
           />

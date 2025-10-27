@@ -17,7 +17,7 @@ interface ItemFormData {
   bestand: string;
   organisation: string[];
   Anmerkungen: string;
-  gruppe: string;
+  kiste: string;
   bild: File | null;
 }
 
@@ -30,7 +30,7 @@ interface ItemFormProps {
   mode: "create" | "edit";
 }
 
-interface Gruppe {
+interface Kiste {
   id: string;
   name: string;
 }
@@ -45,24 +45,24 @@ export function ItemForm({
   isSaving,
   mode,
 }: ItemFormProps) {
-  const [gruppen, setGruppen] = useState<Gruppe[]>([]);
-  const [isLoadingGruppen, setIsLoadingGruppen] = useState(false);
+  const [kisten, setKisten] = useState<Kiste[]>([]);
+  const [isLoadingKisten, setIsLoadingKisten] = useState(false);
 
   useEffect(() => {
-    fetchGruppen();
+    fetchKisten();
   }, []);
 
-  const fetchGruppen = async () => {
-    setIsLoadingGruppen(true);
+  const fetchKisten = async () => {
+    setIsLoadingKisten(true);
     try {
-      const resultList = await pb.collection("gruppen").getFullList({
+      const resultList = await pb.collection("kisten").getFullList({
         sort: "name",
       });
-      setGruppen(resultList.map((item) => ({ id: item.id, name: item.name })));
+      setKisten(resultList.map((item) => ({ id: item.id, name: item.name })));
     } catch (error) {
-      console.error("Error fetching gruppen:", error);
+      console.error("Error fetching kisten:", error);
     } finally {
-      setIsLoadingGruppen(false);
+      setIsLoadingKisten(false);
     }
   };
 
@@ -113,21 +113,21 @@ export function ItemForm({
       </div>
 
       <div>
-        <Label htmlFor='gruppe'>Gruppe</Label>
-        {isLoadingGruppen ? (
-          <div className='text-sm text-muted-foreground'>Lade Gruppen...</div>
+        <Label htmlFor='kiste'>Kiste</Label>
+        {isLoadingKisten ? (
+          <div className='text-sm text-muted-foreground'>Lade Kisten...</div>
         ) : (
           <Select
-            value={formData.gruppe}
-            onValueChange={(value) => handleInputChange("gruppe", value)}
+            value={formData.kiste}
+            onValueChange={(value) => handleInputChange("kiste", value)}
           >
             <SelectTrigger className='w-full'>
-              <SelectValue placeholder='Gruppe auswählen...' />
+              <SelectValue placeholder='Kiste auswählen...' />
             </SelectTrigger>
             <SelectContent>
-              {gruppen.map((gruppe) => (
-                <SelectItem key={gruppe.id} value={gruppe.id}>
-                  {gruppe.name}
+              {kisten.map((kiste) => (
+                <SelectItem key={kiste.id} value={kiste.id}>
+                  {kiste.name}
                 </SelectItem>
               ))}
             </SelectContent>

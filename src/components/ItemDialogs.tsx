@@ -13,7 +13,7 @@ interface ItemFormData {
   bestand: string
   organisation: string[]
   Anmerkungen: string
-  gruppe: string
+  kiste: string
   bild: File | null
 }
 

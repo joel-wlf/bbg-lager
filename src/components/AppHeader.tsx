@@ -28,7 +28,7 @@ export default function AppHeader() {
           >
             <TabsList>
               <TabsTrigger value='items'>Gegenstände</TabsTrigger>
-              <TabsTrigger value='gruppen'>Gruppen</TabsTrigger>
+              <TabsTrigger value='kisten'>Kisten</TabsTrigger>
               <TabsTrigger value='requests'>Entnahmen</TabsTrigger>
             </TabsList>
           </Tabs>
