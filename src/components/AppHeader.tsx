@@ -44,20 +44,20 @@ export default function AppHeader() {
           </Button>
         </div>
       </div>
-      <div className='flex w-full justify-between items-center flex-row pt-3'>
-        <div>
-          <Tabs
-            value={getCurrentTab()}
-            onValueChange={(value) => navigate(`/${value}`)}
-          >
-            <TabsList>
+      <div className='flex w-full justify-center items-center flex-row pt-3'>
+        <Tabs
+          value={getCurrentTab()}
+          onValueChange={(value) => navigate(`/${value}`)}
+        >
+          <div className="w-screen px-4">
+            <TabsList className="w-full">
               <TabsTrigger value='items'>Gegenstände</TabsTrigger>
               <TabsTrigger value='kisten'>Kisten</TabsTrigger>
               <TabsTrigger value='requests'>Entnahmen</TabsTrigger>
               <TabsTrigger value='anfragen'>Anfragen</TabsTrigger>
             </TabsList>
-          </Tabs>
-        </div>
+          </div>
+        </Tabs>
       </div>
     </div>
   );
