@@ -143,7 +143,7 @@ export function EntnahmenDialog({
                 {entnahme.expand?.items?.map((item: any) => (
                   <div
                     key={item.id}
-                    className='flex items-start gap-4 py-2 border-b'
+                    className='flex items-start gap-4 py-2 border-t'
                   >
                     <div className='flex flex-col gap-2'>
                       <div className='flex gap-4'>
