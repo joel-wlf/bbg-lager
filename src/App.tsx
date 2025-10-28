@@ -13,6 +13,7 @@ import LogInScreen from "./LogInScreen";
 import Items from "./pages/Items";
 import Kisten from "./pages/Kisten";
 import Entnahmen from "./pages/Entnahmen";
+import PublicItems from "./pages/PublicItems";
 import AppHeader from "./components/AppHeader";
 
 function AppContent() {
@@ -38,6 +39,10 @@ function AppContent() {
             element={
               user ? <Navigate to='/items' replace /> : <LogInScreen />
             }
+          />
+          <Route
+            path='/public-items'
+            element={<PublicItems />}
           />
 
           {/* Protected Routes */}

@@ -44,13 +44,32 @@ export default function LogInScreen() {
 
   return (
     <div className='flex items-center justify-center min-h-screen bg-gray-50'>
-      <Card className='w-full max-w-md'>
-        <CardHeader>
-          <CardTitle>Login K/J Lager</CardTitle>
-          <CardDescription>
-            Email und Passwort eingeben, um sich anzumelden.
-          </CardDescription>
-        </CardHeader>
+      <div className='w-full max-w-md space-y-4'>
+        {/* Public View Button */}
+        <Card className='w-full'>
+          <CardContent className='p-6'>
+            <div className='text-center space-y-3'>
+              <h3 className='text-lg font-semibold'>Öffentliche Ansicht</h3>
+              <p className='text-sm text-gray-600'>
+                Durchsuchen Sie unsere verfügbaren Gegenstände ohne Anmeldung
+              </p>
+              <Link to='/public-items'>
+                <Button className='w-full' size='lg'>
+                  Gegenstände anzeigen
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Login Card */}
+        <Card className='w-full'>
+          <CardHeader>
+            <CardTitle>Login K/J Lager</CardTitle>
+            <CardDescription>
+              Email und Passwort eingeben, um sich anzumelden.
+            </CardDescription>
+          </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className='space-y-4'>
             <div className='space-y-2'>
@@ -85,7 +104,8 @@ export default function LogInScreen() {
             </Button>
           </form>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
