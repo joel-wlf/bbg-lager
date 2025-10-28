@@ -166,7 +166,7 @@ export default function Items() {
       fetchItems(searchTerm);
     } catch (error) {
       console.error('Error deleting item:', error);
-      alert('Fehler beim Löschen des Gegenstands');
+      alert('Fehler beim Löschen des Gegenstands. Der Gegenstand darf kein Teil einer Entnahme sein.');
     } finally {
       setIsSaving(false);
     }

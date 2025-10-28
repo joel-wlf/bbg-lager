@@ -144,7 +144,7 @@ export default function Kisten() {
       fetchKisten(searchTerm);
     } catch (error) {
       console.error('Error deleting kiste:', error);
-      alert('Fehler beim Löschen der Kiste');
+      alert('Fehler beim Löschen der Kiste. Die Kiste darf keine Gegenstände enthalten.');
     } finally {
       setIsSaving(false);
     }
