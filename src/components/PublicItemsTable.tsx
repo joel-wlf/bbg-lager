@@ -68,7 +68,6 @@ export function PublicItemsTable({
                 <TableHead>Bestand</TableHead>
                 <TableHead>Bild</TableHead>
                 <TableHead>Organisation</TableHead>
-                <TableHead>Kiste</TableHead>
                 <TableHead>Anmerkungen</TableHead>
               </TableRow>
             </TableHeader>
@@ -105,17 +104,6 @@ export function PublicItemsTable({
                             {org}
                           </Badge>
                         ))}
-                      </div>
-                    ) : (
-                      <span className='text-muted-foreground'>-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {item.kiste ? (
-                      <div className='flex flex-wrap gap-1'>
-                        <Badge variant='outline' className='text-xs'>
-                          {item.expand?.kiste?.name || item.kiste}
-                        </Badge>
                       </div>
                     ) : (
                       <span className='text-muted-foreground'>-</span>
