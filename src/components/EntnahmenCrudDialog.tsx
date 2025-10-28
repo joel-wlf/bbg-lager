@@ -1,0 +1,466 @@
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Badge } from "./ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { ItemMultiSelect } from "./ItemMultiSelect";
+import {
+  CalendarDays,
+  MapPin,
+  Package,
+  CheckCircle,
+  ArrowRight,
+  ArrowLeft,
+} from "lucide-react";
+import { getImageUrl, pb } from "@/lib/pocketbase";
+import { useAuth } from "@/contexts/AuthContext";
+import { IconTrash } from "@tabler/icons-react";
+
+interface EntnahmenCrudDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  mode: "create" | "return";
+  entnahme?: any;
+  onSuccess: () => void;
+}
+
+export function EntnahmenCrudDialog({
+  isOpen,
+  onClose,
+  mode,
+  entnahme,
+  onSuccess,
+}: EntnahmenCrudDialogProps) {
+  const { user } = useAuth();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [availableItems, setAvailableItems] = useState<any[]>([]);
+
+  // Form data for create mode
+  const [formData, setFormData] = useState({
+    zweck: "",
+    raus: "",
+    selectedItemIds: [] as string[],
+  });
+
+  // Return mode data
+  const [returnSignature, setReturnSignature] = useState<File | null>(null);
+  const [confirmedItems, setConfirmedItems] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (mode === "create") {
+        setCurrentStep(1);
+        setFormData({ zweck: "", raus: "", selectedItemIds: [] });
+        fetchAvailableItems();
+      } else if (mode === "return") {
+        setCurrentStep(3);
+        setConfirmedItems([]);
+        setReturnSignature(null);
+      }
+    }
+  }, [isOpen, mode]);
+
+  const fetchAvailableItems = async () => {
+    try {
+      const items = await pb.collection("items").getFullList({
+        sort: "name",
+        expand: "kiste",
+      });
+      setAvailableItems(items);
+    } catch (error) {
+      console.error("Error fetching items:", error);
+    }
+  };
+
+  const getSelectedItemsData = () => {
+    return availableItems.filter((item) =>
+      formData.selectedItemIds.includes(item.id)
+    );
+  };
+
+  const getReturnItemsData = () => {
+    if (!entnahme?.expand?.items) return [];
+    return entnahme.expand.items;
+  };
+
+  const handleNext = async () => {
+    if (currentStep === 1) {
+      if (!formData.zweck.trim() || !formData.raus) {
+        alert("Bitte füllen Sie Zweck und Datum aus.");
+        return;
+      }
+      setCurrentStep(2);
+    } else if (currentStep === 2 && mode === "create") {
+      if (formData.selectedItemIds.length === 0) {
+        alert("Bitte wählen Sie mindestens einen Gegenstand aus.");
+        return;
+      }
+      // Create directly after step 2
+      await handleCreate();
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep(currentStep - 1);
+  };
+
+  const handleCreate = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      // Convert datetime-local format to ISO string
+      const rausDate = new Date(formData.raus).toISOString();
+      
+      const data = {
+        zweck: formData.zweck,
+        raus: rausDate,
+        items: formData.selectedItemIds,
+        user: user.id,
+      };
+
+      console.log("Creating entnahme with data:", data);
+      await pb.collection("entnahmen").create(data);
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Error creating entnahme:", error);
+      alert("Fehler beim Erstellen der Entnahme");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReturn = async () => {
+    if (!entnahme || confirmedItems.length !== entnahme.items.length) {
+      alert("Bitte bestätigen Sie alle zurückgegebenen Gegenstände.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("rein", new Date().toISOString());
+
+      if (returnSignature) {
+        formData.append("rein_signatur", returnSignature);
+      }
+
+      await pb.collection("entnahmen").update(entnahme.id, formData);
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Error returning entnahme:", error);
+      alert("Fehler beim Zurückgeben der Entnahme");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setReturnSignature(e.target.files[0]);
+    }
+  };
+
+  const toggleItemConfirmation = (itemId: string) => {
+    setConfirmedItems((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const renderStep1 = () => (
+    <div className='space-y-6'>
+      <div className='space-y-4'>
+        <div>
+          <Label htmlFor='zweck'>Zweck der Entnahme</Label>
+          <Input
+            id='zweck'
+            value={formData.zweck}
+            minLength={3}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, zweck: e.target.value }))
+            }
+            placeholder='z.B. KJT 25, Kinderfreizeit...'
+          />
+        </div>
+
+        <div>
+          <Label htmlFor='raus'>Ausgabedatum</Label>
+          <Input
+            id='raus'
+            type='datetime-local'
+            value={formData.raus}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, raus: e.target.value }))
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const handleRemoveItem = (itemId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedItemIds: prev.selectedItemIds.filter(id => id !== itemId)
+    }));
+  };
+
+  const renderStep2 = () => {
+    const selectedItems = getSelectedItemsData();
+
+    return (
+      <div className='space-y-4'>
+        <div className='text-center'>
+          <h3 className='text-lg font-semibold'>Gegenstände auswählen</h3>
+          <p className='text-gray-600'>
+            Wählen Sie die Gegenstände aus und sehen Sie wo sie sich befinden:
+          </p>
+        </div>
+
+        {/* Item Multi Select */}
+        <div>
+          <Label htmlFor='items'>Gegenstände auswählen</Label>
+          <ItemMultiSelect
+            value={formData.selectedItemIds}
+            onChange={(values) =>
+              setFormData((prev) => ({ ...prev, selectedItemIds: values }))
+            }
+            placeholder='Gegenstände suchen und auswählen...'
+          />
+        </div>
+
+        {/* Selected Items with Location Info */}
+        {selectedItems.length > 0 && (
+          <div className='space-y-3'>
+            <h4 className='font-medium'>
+              Ausgewählte Gegenstände ({selectedItems.length}):
+            </h4>
+            <div className='grid gap-3 max-h-96 overflow-y-auto'>
+              {selectedItems.map((item) => (
+                <Card key={item.id}>
+                  <CardContent className='px-4'>
+                    <div className='flex flex-col gap-2'>
+                      <div className='flex items-start justify-between gap-4'>
+                        <div className='flex items-start gap-4 flex-1'>
+                          {item.bild && (
+                            <img
+                              src={getImageUrl("items", item.id, item.bild)}
+                              alt={item.name}
+                              className='w-16 h-16 object-cover rounded'
+                            />
+                          )}
+                          <div className='flex-1 space-y-2'>
+                            <h4 className='font-medium'>{item.name}</h4>
+                            <div className='flex items-center gap-2 text-sm text-gray-600'>
+                              <Package className='w-4 h-4' />
+                              <span>Bestand: {item.bestand} Stück</span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => handleRemoveItem(item.id)}
+                          className='text-red-600 hover:text-red-700'
+                        >
+                          <IconTrash className='w-4 h-4' />
+                        </Button>
+                      </div>
+                      {item.expand?.kiste && (
+                        <div className='flex items-center gap-2 text-sm'>
+                          <MapPin className='w-4 h-4 text-gray-600' />
+                          <Badge variant='outline'>
+                            Kiste: {item.expand.kiste.name} - Regal{" "}
+                            {item.expand.kiste.regal}, Stellplatz{" "}
+                            {item.expand.kiste.stellplatz}
+                          </Badge>
+                        </div>
+                      )}
+                      {item.Anmerkungen && (
+                        <p className='text-xs text-gray-500'>
+                          {item.Anmerkungen}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderStep3 = () => {
+    const items =
+      mode === "create" ? getSelectedItemsData() : getReturnItemsData();
+
+    return (
+      <div className='space-y-6'>
+        <div className='text-center'>
+          <h3 className='text-lg font-semibold'>
+            {mode === "create" ? "Entnahme bestätigen" : "Rückgabe bestätigen"}
+          </h3>
+          <p className='text-gray-600'>
+            {mode === "create"
+              ? "Überprüfen Sie Ihre Entnahme und bestätigen Sie."
+              : "Bestätigen Sie, dass alle Gegenstände zurückgegeben wurden."}
+          </p>
+        </div>
+
+        {mode === "return" && (
+          <div>
+            <Label htmlFor='signature'>Rückgabe-Signatur (optional)</Label>
+            <Input
+              id='signature'
+              type='file'
+              accept='image/*'
+              onChange={handleSignatureChange}
+            />
+          </div>
+        )}
+
+        <div className='space-y-3 max-h-64 overflow-y-auto'>
+          {items.map((item) => (
+            <Card key={item.id} className='relative'>
+              <CardContent className='px-4'>
+                <div className='flex items-center gap-4'>
+                  {mode === "return" && (
+                    <input
+                      type='checkbox'
+                      checked={confirmedItems.includes(item.id)}
+                      onChange={() => toggleItemConfirmation(item.id)}
+                      className='w-4 h-4'
+                    />
+                  )}
+
+                  {item.bild && (
+                    <img
+                      src={getImageUrl("items", item.id, item.bild)}
+                      alt={item.name}
+                      className='w-12 h-12 object-cover rounded'
+                    />
+                  )}
+
+                  <div className='flex-1'>
+                    <h4 className='font-medium'>{item.name}</h4>
+                    {item.expand?.kiste && (
+                      <div className='flex items-center gap-2 text-sm text-gray-600'>
+                        <MapPin className='w-3 h-3' />
+                        <span>
+                          {item.expand.kiste.name} - R{item.expand.kiste.regal}S
+                          {item.expand.kiste.stellplatz}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {mode === "return" && confirmedItems.includes(item.id) && (
+                    <CheckCircle className='w-5 h-5 text-green-500' />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const getStepTitle = () => {
+    if (mode === "return") return "Gegenstände zurückgeben";
+
+    switch (currentStep) {
+      case 1:
+        return "Neue Entnahme - Schritt 1/2";
+      case 2:
+        return "Neue Entnahme - Schritt 2/2";
+      default:
+        return "Neue Entnahme";
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+        <DialogHeader>
+          <DialogTitle>{getStepTitle()}</DialogTitle>
+        </DialogHeader>
+
+        <div className='space-y-6'>
+          {/* Progress indicator for create mode */}
+          {mode === "create" && (
+            <div className='flex items-center justify-center space-x-4'>
+              {[1, 2].map((step) => (
+                <div key={step} className='flex items-center'>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      step <= currentStep
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {step}
+                  </div>
+                  {step < 2 && (
+                    <ArrowRight
+                      className={`w-4 h-4 mx-2 ${
+                        step < currentStep ? "text-blue-500" : "text-gray-300"
+                      }`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Step content */}
+          {mode === "create" && currentStep === 1 && renderStep1()}
+          {mode === "create" && currentStep === 2 && renderStep2()}
+          {mode === "return" && renderStep3()}
+
+          {/* Navigation buttons */}
+          <div className='flex justify-between'>
+            <div>
+              {mode === "create" && currentStep > 1 && (
+                <Button variant='outline' onClick={handleBack}>
+                  <ArrowLeft className='w-4 h-4 mr-2' />
+                  Zurück
+                </Button>
+              )}
+            </div>
+
+            <div className='flex gap-2'>
+              {mode === "create" && currentStep === 1 && (
+                <Button onClick={handleNext}>
+                  Weiter
+                  <ArrowRight className='w-4 h-4 ml-2' />
+                </Button>
+              )}
+
+              {mode === "create" && currentStep === 2 && (
+                <Button onClick={handleNext} disabled={isLoading}>
+                  {isLoading ? "Erstellen..." : "Entnahme erstellen"}
+                </Button>
+              )}
+
+              {mode === "return" && (
+                <Button onClick={handleReturn} disabled={isLoading}>
+                  {isLoading ? "Speichern..." : "Rückgabe bestätigen"}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -1,6 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, User, Package, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CalendarDays, User, Package, Clock, ArrowLeft, Eye } from "lucide-react";
 import { pb } from "@/lib/pocketbase";
 
 interface EntnahmenCardsProps {
@@ -8,6 +9,7 @@ interface EntnahmenCardsProps {
   isLoading: boolean;
   searchTerm: string;
   onCardClick: (entnahme: any) => void;
+  onReturnEntnahme: (entnahme: any) => void;
 }
 
 export function EntnahmenCards({
@@ -15,6 +17,7 @@ export function EntnahmenCards({
   isLoading,
   searchTerm,
   onCardClick,
+  onReturnEntnahme,
 }: EntnahmenCardsProps) {
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
@@ -71,8 +74,7 @@ export function EntnahmenCards({
       {entnahmen.map((entnahme) => (
         <Card 
           key={entnahme.id} 
-          className="cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => onCardClick(entnahme)}
+          className="hover:shadow-lg transition-shadow"
         >
           <CardHeader className="pb-3">
             <div className="flex justify-between items-start">
@@ -112,7 +114,6 @@ export function EntnahmenCards({
                       <p className="text-xs text-gray-500 truncate">
                         Kiste: {item.expand.kiste.name}
                       </p>
-                      
                     )}
                   </div>
                 </div>
@@ -143,6 +144,35 @@ export function EntnahmenCards({
               )}
             </div>
           </CardContent>
+          
+          <CardFooter className="flex gap-2 pt-0">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={(e) => {
+                e.stopPropagation();
+                onCardClick(entnahme);
+              }}
+              className="flex-1"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              Details
+            </Button>
+            {!entnahme.rein && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReturnEntnahme(entnahme);
+                }}
+                className="flex-1"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Zurückgeben
+              </Button>
+            )}
+          </CardFooter>
         </Card>
       ))}
     </div>
