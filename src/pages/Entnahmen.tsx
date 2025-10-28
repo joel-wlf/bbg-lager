@@ -55,6 +55,7 @@ export default function Entnahmen() {
         expand: "user,items,items.kiste"
       });
 
+
       setEntnahmen(resultList.items);
     } catch (error) {
       console.error("Error fetching entnahmen:", error);

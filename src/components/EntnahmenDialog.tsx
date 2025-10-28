@@ -1,8 +1,15 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { CalendarDays, User, Package, Clock, MapPin } from "lucide-react";
-import { pb } from "@/lib/pocketbase";
+import {
+  CalendarDays,
+  User,
+  Package,
+  Clock,
+  MapPin,
+  AlertTriangle,
+} from "lucide-react";
+import { getImageUrl, pb } from "@/lib/pocketbase";
 
 interface EntnahmenDialogProps {
   entnahme: any;
@@ -48,14 +55,14 @@ export function EntnahmenDialog({
 
   const getItemImage = (item: any) => {
     if (item.bild) {
-      return pb.files.getUrl(item, item.bild);
+      return getImageUrl("items", item.id, item.bild);
     }
     return null;
   };
 
   const getReinSignaturImage = () => {
     if (entnahme.rein_signatur) {
-      return pb.files.getUrl(entnahme, entnahme.rein_signatur);
+      return getImageUrl("entnahmen", entnahme.id, entnahme.rein_signatur);
     }
     return null;
   };
@@ -81,13 +88,13 @@ export function EntnahmenDialog({
             </CardHeader>
             <CardContent>
               <div className='grid grid-cols-3 gap-4'>
-                <div className="col-span-1">
+                <div className='col-span-1'>
                   <p className='text-sm font-medium'>Name</p>
                   <p className='text-sm text-gray-600'>
                     {entnahme.expand?.user?.name || "Unbekannt"}
                   </p>
                 </div>
-                <div className="col-span-2">
+                <div className='col-span-2'>
                   <p className='text-sm font-medium'>E-Mail</p>
                   <p className='text-sm text-gray-600'>
                     {entnahme.expand?.user?.email || "Nicht verfügbar"}
@@ -116,9 +123,7 @@ export function EntnahmenDialog({
                 <div>
                   <p className='text-sm font-medium'>Zurückgegeben</p>
                   <p className='text-sm text-gray-600'>
-                    {entnahme.rein
-                      ? formatDate(entnahme.rein)
-                      : "Noch nicht"}
+                    {entnahme.rein ? formatDate(entnahme.rein) : "Noch nicht"}
                   </p>
                 </div>
               </div>
@@ -141,32 +146,31 @@ export function EntnahmenDialog({
                     className='flex items-start gap-4 py-2 border-b'
                   >
                     <div className='flex flex-col gap-2'>
-                      <div className="flex gap-4">
-
-                    {getItemImage(item) && (
-                      <img
-                        src={getItemImage(item)}
-                        alt={item.name}
-                        className='w-16 h-16 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity'
-                        onClick={() => onImageClick(getItemImage(item))}
-                      />
-                    )}
-                      <div className='flex-1 space-y-2'>
-                        <h4 className='font-medium'>{item.name}</h4>
-                        <div className='grid grid-cols-2 gap-4 text-sm text-gray-600'>
-                          <div>
-                            <p className='font-medium'>Bestand</p>
-                            <p>{item.bestand} Stück</p>
-                          </div>
-                          <div>
-                            <p className='font-medium'>Organisation</p>
-                            <p>
-                              {item.organisation?.join(", ") ||
-                                "Nicht angegeben"}
-                            </p>
+                      <div className='flex gap-4'>
+                        {getItemImage(item) && (
+                          <img
+                            src={getItemImage(item)}
+                            alt={item.name}
+                            className='w-16 h-16 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity'
+                            onClick={() => onImageClick(getItemImage(item))}
+                          />
+                        )}
+                        <div className='flex-1 space-y-2'>
+                          <h4 className='font-medium'>{item.name}</h4>
+                          <div className='grid grid-cols-2 gap-4 text-sm text-gray-600'>
+                            <div>
+                              <p className='font-medium'>Bestand</p>
+                              <p>{item.bestand} Stück</p>
+                            </div>
+                            <div>
+                              <p className='font-medium'>Organisation</p>
+                              <p>
+                                {item.organisation?.join(", ") ||
+                                  "Nicht angegeben"}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
                       </div>
                       {item.expand?.kiste && (
                         <div className='flex items-center gap-2 text-sm text-gray-600'>
@@ -192,6 +196,80 @@ export function EntnahmenDialog({
               </div>
             </CardContent>
           </Card>
+
+          {/* Problems Section */}
+          {entnahme.problems &&
+            (() => {
+              // Check if problems is already an array (from database)
+              if (Array.isArray(entnahme.problems)) {
+                return entnahme.problems.length > 0;
+              }
+              // If it's a string, try to parse it
+              try {
+                const problems = JSON.parse(entnahme.problems);
+                return problems.length > 0;
+              } catch {
+                return false;
+              }
+            })() && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className='flex items-center gap-2 text-red-600'>
+                    <AlertTriangle className='w-5 h-5' />
+                    Probleme bei der Rückgabe
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className='space-y-3'>
+                    {(() => {
+                      let problems;
+                      
+                      // Check if problems is already an array (from database)
+                      if (Array.isArray(entnahme.problems)) {
+                        problems = entnahme.problems;
+                      } else {
+                        // If it's a string, try to parse it
+                        try {
+                          problems = JSON.parse(entnahme.problems);
+                        } catch {
+                          return (
+                            <p className='text-red-600'>
+                              Fehler beim Laden der Probleme
+                            </p>
+                          );
+                        }
+                      }
+                      
+                      return problems.map((problem: any, index: number) => {
+                        // Find the item name from the expanded items
+                        const problemItem = entnahme.expand?.items?.find(
+                          (item: any) => item.id === problem.item
+                        );
+                        return (
+                          <div
+                            key={index}
+                            className='p-3 bg-red-50 border border-red-200 rounded'
+                          >
+                            <div className='flex items-start gap-3'>
+                              <AlertTriangle className='w-4 h-4 text-red-500 mt-0.5 flex-shrink-0' />
+                              <div className='flex-1'>
+                                <p className='font-medium text-red-800'>
+                                  {problemItem?.name ||
+                                    "Unbekannter Gegenstand"}
+                                </p>
+                                <p className='text-sm text-red-600 mt-1'>
+                                  {problem.problem}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
           {/* Return Signature */}
           {entnahme.rein_signatur && (

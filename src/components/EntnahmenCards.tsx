@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, User, Package, Clock, ArrowLeft, Eye } from "lucide-react";
-import { pb } from "@/lib/pocketbase";
+import { CalendarDays, User, Package, Clock, ArrowLeft, Eye, AlertTriangle } from "lucide-react";
+import { getImageUrl, pb } from "@/lib/pocketbase";
 
 interface EntnahmenCardsProps {
   entnahmen: any[];
@@ -44,9 +44,26 @@ export function EntnahmenCards({
     }
   };
 
+  const hasProblems = (entnahme: any) => {
+    if (!entnahme.problems) return false;
+    
+    // Check if problems is already an array (from database)
+    if (Array.isArray(entnahme.problems)) {
+      return entnahme.problems.length > 0;
+    }
+    
+    // If it's a string, try to parse it
+    try {
+      const problems = JSON.parse(entnahme.problems);
+      return Array.isArray(problems) && problems.length > 0;
+    } catch {
+      return false;
+    }
+  };
+
   const getItemImage = (item: any) => {
     if (item.bild) {
-      return pb.files.getUrl(item, item.bild);
+      return getImageUrl("items", item.id, item.bild);
     }
     return null;
   };
@@ -78,7 +95,7 @@ export function EntnahmenCards({
           key={entnahme.id} 
           className="hover:shadow-lg transition-shadow"
         >
-          <CardHeader className="pb-3">
+          <CardHeader>
             <div className="flex justify-between items-start">
               <CardTitle className="text-lg">{entnahme.zweck}</CardTitle>
               {getStatusBadge(entnahme)}
@@ -149,6 +166,16 @@ export function EntnahmenCards({
                 </div>
               )}
             </div>
+
+            {/* Problems indicator */}
+            {hasProblems(entnahme) && (
+              <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <span className="text-xs text-red-600 font-medium">
+                  Es gab Probleme bei der Rückgabe
+                </span>
+              </div>
+            )}
           </CardContent>
           
           <CardFooter className="flex gap-2 pt-0">

@@ -51,6 +51,7 @@ export function EntnahmenCrudDialog({
   // Return mode data
   const [returnSignature, setReturnSignature] = useState<File | null>(null);
   const [confirmedItems, setConfirmedItems] = useState<string[]>([]);
+  const [itemProblems, setItemProblems] = useState<{[itemId: string]: string}>({});
 
   useEffect(() => {
     if (isOpen) {
@@ -60,7 +61,10 @@ export function EntnahmenCrudDialog({
         fetchAvailableItems();
       } else if (mode === "return") {
         setCurrentStep(3);
-        setConfirmedItems([]);
+        // Initialize all items as confirmed by default
+        const allItemIds = entnahme?.items || [];
+        setConfirmedItems(allItemIds);
+        setItemProblems({});
         setReturnSignature(null);
         // Clear signature pad
         setTimeout(() => {
@@ -97,8 +101,12 @@ export function EntnahmenCrudDialog({
 
   const handleNext = async () => {
     if (currentStep === 1) {
-      if (!formData.zweck.trim() || !formData.raus) {
-        alert("Bitte füllen Sie Zweck und Datum aus.");
+      if (formData.zweck.trim().length < 3) {
+        alert("Der Zweck muss mindestens 3 Zeichen lang sein.");
+        return;
+      }
+      if (!formData.raus) {
+        alert("Bitte wählen Sie ein Datum aus.");
         return;
       }
       setCurrentStep(2);
@@ -144,8 +152,17 @@ export function EntnahmenCrudDialog({
   };
 
   const handleReturn = async () => {
-    if (!entnahme || confirmedItems.length !== entnahme.items.length) {
-      alert("Bitte bestätigen Sie alle zurückgegebenen Gegenstände.");
+    if (!entnahme) {
+      alert("Keine Entnahme gefunden.");
+      return;
+    }
+
+    // Check if all missing items have problem descriptions
+    const missingItems = entnahme.items.filter((itemId: string) => !confirmedItems.includes(itemId));
+    const missingItemsWithoutProblems = missingItems.filter((itemId: string) => !itemProblems[itemId]?.trim());
+    
+    if (missingItemsWithoutProblems.length > 0) {
+      alert("Bitte beschreiben Sie das Problem für alle fehlenden Gegenstände.");
       return;
     }
 
@@ -159,7 +176,16 @@ export function EntnahmenCrudDialog({
       const formData = new FormData();
       formData.append("rein", new Date().toISOString());
       formData.append("rein_signatur", returnSignature);
-
+      
+      // Prepare problems data for missing items
+      const problems = missingItems.map((itemId: string) => ({
+        item: itemId,
+        problem: itemProblems[itemId]
+      }));
+      
+      if (problems.length > 0) {
+        formData.append("problems", JSON.stringify(problems));
+      }
       await pb.collection("entnahmen").update(entnahme.id, formData);
       onSuccess();
       onClose();
@@ -193,11 +219,29 @@ export function EntnahmenCrudDialog({
   };
 
   const toggleItemConfirmation = (itemId: string) => {
-    setConfirmedItems((prev) =>
-      prev.includes(itemId)
+    setConfirmedItems((prev) => {
+      const newConfirmedItems = prev.includes(itemId)
         ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
-    );
+        : [...prev, itemId];
+      
+      // If item is being confirmed (checked), remove any problem description
+      if (newConfirmedItems.includes(itemId)) {
+        setItemProblems((prevProblems) => {
+          const newProblems = { ...prevProblems };
+          delete newProblems[itemId];
+          return newProblems;
+        });
+      }
+      
+      return newConfirmedItems;
+    });
+  };
+
+  const updateItemProblem = (itemId: string, problem: string) => {
+    setItemProblems((prev) => ({
+      ...prev,
+      [itemId]: problem
+    }));
   };
 
   const renderStep1 = () => (
@@ -328,40 +372,53 @@ export function EntnahmenCrudDialog({
           {items.map((item) => (
             <Card key={item.id} className='relative'>
               <CardContent className='px-4'>
-                <div className='flex items-center gap-4'>
-                  {mode === "return" && (
-                    <input
-                      type='checkbox'
-                      checked={confirmedItems.includes(item.id)}
-                      onChange={() => toggleItemConfirmation(item.id)}
-                      className='w-4 h-4'
-                      required
-                    />
-                  )}
-
-                  {item.bild && (
-                    <img
-                      src={getImageUrl("items", item.id, item.bild, true)}
-                      alt={item.name}
-                      className='w-12 h-12 object-cover rounded'
-                    />
-                  )}
-
-                  <div className='flex-1'>
-                    <h4 className='font-medium'>{item.name}</h4>
-                    {item.expand?.kiste && (
-                      <div className='flex items-center gap-2 text-sm text-gray-600'>
-                        <MapPin className='w-3 h-3' />
-                        <span>
-                          {item.expand.kiste.name} - R{item.expand.kiste.regal}S
-                          {item.expand.kiste.stellplatz}
-                        </span>
-                      </div>
+                <div className='space-y-3'>
+                  <div className='flex items-center gap-4'>
+                    {mode === "return" && (
+                      <input
+                        type='checkbox'
+                        checked={confirmedItems.includes(item.id)}
+                        onChange={() => toggleItemConfirmation(item.id)}
+                        className='w-4 h-4'
+                      />
                     )}
-                  </div>
 
-                  {mode === "return" && confirmedItems.includes(item.id) && (
-                    <CheckCircle className='w-5 h-5 text-green-500' />
+                    {item.bild && (
+                      <img
+                        src={getImageUrl("items", item.id, item.bild, true)}
+                        alt={item.name}
+                        className='w-12 h-12 object-cover rounded'
+                      />
+                    )}
+
+                    <div className='flex-1'>
+                      <h4 className='font-medium'>{item.name}</h4>
+                      {item.expand?.kiste && (
+                        <div className='flex items-center gap-2 text-sm text-gray-600'>
+                          <MapPin className='w-3 h-3' />
+                          <span>
+                            {item.expand.kiste.name} - R{item.expand.kiste.regal}S
+                            {item.expand.kiste.stellplatz}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Problem input field for unchecked items in return mode */}
+                  {mode === "return" && !confirmedItems.includes(item.id) && (
+                    <div className='ml-8'>
+                      <Label htmlFor={`problem-${item.id}`} className='text-sm text-red-600'>
+                        Problem beschreiben (z.B. kaputt, aufgebraucht, verloren):
+                      </Label>
+                      <Input
+                        id={`problem-${item.id}`}
+                        value={itemProblems[item.id] || ''}
+                        onChange={(e) => updateItemProblem(item.id, e.target.value)}
+                        placeholder='Beschreiben Sie das Problem...'
+                        className='mt-1'
+                      />
+                    </div>
                   )}
                 </div>
               </CardContent>
