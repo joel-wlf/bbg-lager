@@ -65,7 +65,7 @@ export default function LogInScreen() {
         {/* Login Card */}
         <Card className='w-full'>
           <CardHeader>
-            <CardTitle>Login K/J Lager</CardTitle>
+            <CardTitle>Admin Login K/J Lager</CardTitle>
             <CardDescription>
               Email und Passwort eingeben, um sich anzumelden.
             </CardDescription>

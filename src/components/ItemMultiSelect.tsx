@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Popover,
   PopoverContent,
@@ -152,8 +153,8 @@ export function ItemMultiSelect({
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" style={{ width: "var(--radix-popover-trigger-width)" }}>
-          <div className="flex flex-col max-h-80">
+        <PopoverContent className="w-full p-0" style={{ width: "var(--radix-popover-trigger-width)", maxHeight: "none" }}>
+          <div className="flex flex-col max-h-none">
             {/* Search input */}
             <div className="flex items-center border-b px-3 py-2">
               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -166,7 +167,7 @@ export function ItemMultiSelect({
             </div>
 
             {/* Items list */}
-            <div className="flex-1 overflow-auto">
+            <div className="h-60 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
               {isLoading ? (
                 <div className="p-4 text-center text-sm text-gray-500">
                   Lade Items...

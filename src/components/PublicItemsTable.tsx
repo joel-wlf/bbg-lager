@@ -10,6 +10,9 @@ import {
 } from "@/components/ui/table";
 import { getImageUrl } from "@/lib/pocketbase";
 import { Button } from "./ui/button";
+import { AnfrageDialog } from "./AnfrageDialog";
+import { useState } from "react";
+import { MessageSquare } from "lucide-react";
 
 interface PublicItemsTableProps {
   items: any[];
@@ -24,9 +27,26 @@ export function PublicItemsTable({
   searchTerm,
   onImageClick,
 }: PublicItemsTableProps) {
+  const [isAnfrageDialogOpen, setIsAnfrageDialogOpen] = useState(false);
+
+  const handleAnfrageSuccess = () => {
+    // Could add additional success handling here if needed
+    console.log("Anfrage successfully created");
+  };
+
   return (
-    <Card>
-        <Button className='px-full mx-5'>Gegenstände anfragen</Button>
+    <>
+      <Card>
+        <div className="p-4 pt-0 border-b">
+          <Button 
+            className='w-full flex items-center gap-2' 
+            size="lg"
+            onClick={() => setIsAnfrageDialogOpen(true)}
+          >
+            <MessageSquare className="w-4 h-4" />
+            Gegenstände anfragen
+          </Button>
+        </div>
       <CardContent className='p-0'>
         {isLoading ? (
           <div className='flex items-center justify-center py-8'>
@@ -116,6 +136,14 @@ export function PublicItemsTable({
           </Table>
         )}
       </CardContent>
-    </Card>
+      </Card>
+
+      {/* Anfrage Dialog */}
+      <AnfrageDialog
+        isOpen={isAnfrageDialogOpen}
+        onClose={() => setIsAnfrageDialogOpen(false)}
+        onSuccess={handleAnfrageSuccess}
+      />
+    </>
   );
 }
