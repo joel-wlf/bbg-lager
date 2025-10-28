@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -13,10 +13,12 @@ import {
   CheckCircle,
   ArrowRight,
   ArrowLeft,
+  RotateCcw,
 } from "lucide-react";
 import { getImageUrl, pb } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 import { IconTrash } from "@tabler/icons-react";
+import SignatureCanvas from "react-signature-canvas";
 
 interface EntnahmenCrudDialogProps {
   isOpen: boolean;
@@ -37,6 +39,7 @@ export function EntnahmenCrudDialog({
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [availableItems, setAvailableItems] = useState<any[]>([]);
+  const signatureRef = useRef<SignatureCanvas>(null);
 
   // Form data for create mode
   const [formData, setFormData] = useState({
@@ -59,6 +62,12 @@ export function EntnahmenCrudDialog({
         setCurrentStep(3);
         setConfirmedItems([]);
         setReturnSignature(null);
+        // Clear signature pad
+        setTimeout(() => {
+          if (signatureRef.current) {
+            signatureRef.current.clear();
+          }
+        }, 100);
       }
     }
   }, [isOpen, mode]);
@@ -140,14 +149,16 @@ export function EntnahmenCrudDialog({
       return;
     }
 
+    if (!returnSignature) {
+      alert("Bitte erstellen Sie eine Rückgabe-Signatur.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const formData = new FormData();
       formData.append("rein", new Date().toISOString());
-
-      if (returnSignature) {
-        formData.append("rein_signatur", returnSignature);
-      }
+      formData.append("rein_signatur", returnSignature);
 
       await pb.collection("entnahmen").update(entnahme.id, formData);
       onSuccess();
@@ -160,9 +171,24 @@ export function EntnahmenCrudDialog({
     }
   };
 
-  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setReturnSignature(e.target.files[0]);
+  const clearSignature = () => {
+    if (signatureRef.current) {
+      signatureRef.current.clear();
+      setReturnSignature(null);
+    }
+  };
+
+  const saveSignature = () => {
+    if (signatureRef.current && !signatureRef.current.isEmpty()) {
+      const canvas = signatureRef.current.getCanvas();
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `signature-${Date.now()}.png`, {
+            type: 'image/png'
+          });
+          setReturnSignature(file);
+        }
+      }, 'image/png');
     }
   };
 
@@ -298,19 +324,6 @@ export function EntnahmenCrudDialog({
 
     return (
       <div className='space-y-6'>
-       
-        {mode === "return" && (
-          <div>
-            <Label htmlFor='signature'>Rückgabe-Signatur (optional)</Label>
-            <Input
-              id='signature'
-              type='file'
-              accept='image/*'
-              onChange={handleSignatureChange}
-            />
-          </div>
-        )}
-
         <div className='space-y-3 max-h-64 overflow-y-auto'>
           {items.map((item) => (
             <Card key={item.id} className='relative'>
@@ -322,6 +335,7 @@ export function EntnahmenCrudDialog({
                       checked={confirmedItems.includes(item.id)}
                       onChange={() => toggleItemConfirmation(item.id)}
                       className='w-4 h-4'
+                      required
                     />
                   )}
 
@@ -354,6 +368,39 @@ export function EntnahmenCrudDialog({
             </Card>
           ))}
         </div>
+
+        {mode === "return" && (
+          <div className="space-y-4">
+            <Label>Rückgabe-Signatur *</Label>
+            <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+              <SignatureCanvas
+                ref={signatureRef}
+                canvasProps={{
+                  height: 200,
+                  className: 'signature-canvas bg-white border rounded w-full',
+                }}
+                backgroundColor="white"
+                onEnd={saveSignature}
+              />
+              <div className="flex justify-between items-center mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={clearSignature}
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Löschen
+                </Button>
+                {returnSignature && (
+                  <span className="text-sm text-green-600">
+                    ✓ Signatur gespeichert
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
