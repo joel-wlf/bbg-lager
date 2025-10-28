@@ -217,14 +217,7 @@ export function EntnahmenCrudDialog({
 
     return (
       <div className='space-y-4'>
-        <div className='text-center'>
-          <h3 className='text-lg font-semibold'>Gegenstände auswählen</h3>
-          <p className='text-gray-600'>
-            Wählen Sie die Gegenstände aus und sehen Sie wo sie sich befinden:
-          </p>
-        </div>
-
-        {/* Item Multi Select */}
+                {/* Item Multi Select */}
         <div>
           <Label htmlFor='items'>Gegenstände auswählen</Label>
           <ItemMultiSelect
@@ -251,7 +244,7 @@ export function EntnahmenCrudDialog({
                         <div className='flex items-start gap-4 flex-1'>
                           {item.bild && (
                             <img
-                              src={getImageUrl("items", item.id, item.bild)}
+                              src={getImageUrl("items", item.id, item.bild, true)}
                               alt={item.name}
                               className='w-16 h-16 object-cover rounded'
                             />
@@ -305,17 +298,7 @@ export function EntnahmenCrudDialog({
 
     return (
       <div className='space-y-6'>
-        <div className='text-center'>
-          <h3 className='text-lg font-semibold'>
-            {mode === "create" ? "Entnahme bestätigen" : "Rückgabe bestätigen"}
-          </h3>
-          <p className='text-gray-600'>
-            {mode === "create"
-              ? "Überprüfen Sie Ihre Entnahme und bestätigen Sie."
-              : "Bestätigen Sie, dass alle Gegenstände zurückgegeben wurden."}
-          </p>
-        </div>
-
+       
         {mode === "return" && (
           <div>
             <Label htmlFor='signature'>Rückgabe-Signatur (optional)</Label>
@@ -344,7 +327,7 @@ export function EntnahmenCrudDialog({
 
                   {item.bild && (
                     <img
-                      src={getImageUrl("items", item.id, item.bild)}
+                      src={getImageUrl("items", item.id, item.bild, true)}
                       alt={item.name}
                       className='w-12 h-12 object-cover rounded'
                     />
@@ -412,7 +395,7 @@ export function EntnahmenCrudDialog({
                   </div>
                   {step < 2 && (
                     <ArrowRight
-                      className={`w-4 h-4 mx-2 ${
+                      className={`w-4 h-4 ml-3 ${
                         step < currentStep ? "text-blue-500" : "text-gray-300"
                       }`}
                     />

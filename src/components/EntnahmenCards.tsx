@@ -10,6 +10,7 @@ interface EntnahmenCardsProps {
   searchTerm: string;
   onCardClick: (entnahme: any) => void;
   onReturnEntnahme: (entnahme: any) => void;
+  onImageClick: (imageUrl: string) => void;
 }
 
 export function EntnahmenCards({
@@ -18,6 +19,7 @@ export function EntnahmenCards({
   searchTerm,
   onCardClick,
   onReturnEntnahme,
+  onImageClick,
 }: EntnahmenCardsProps) {
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
@@ -105,7 +107,11 @@ export function EntnahmenCards({
                     <img 
                       src={getItemImage(item)} 
                       alt={item.name}
-                      className="w-8 h-8 object-cover rounded"
+                      className="w-8 h-8 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onImageClick(getItemImage(item));
+                      }}
                     />
                   )}
                   <div className="flex-1 min-w-0">

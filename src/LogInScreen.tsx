@@ -46,7 +46,7 @@ export default function LogInScreen() {
     <div className='flex items-center justify-center min-h-screen bg-gray-50'>
       <Card className='w-full max-w-md'>
         <CardHeader>
-          <CardTitle>Login</CardTitle>
+          <CardTitle>Login K/J Lager</CardTitle>
           <CardDescription>
             Email und Passwort eingeben, um sich anzumelden.
           </CardDescription>

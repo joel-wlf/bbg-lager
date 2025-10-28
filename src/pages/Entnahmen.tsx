@@ -8,6 +8,7 @@ import { EntnahmenDialog } from "@/components/EntnahmenDialog";
 import { EntnahmenHeader } from "@/components/EntnahmenHeader";
 import { EntnahmenCrudDialog } from "@/components/EntnahmenCrudDialog";
 import { useDebounce } from "@/hooks/useDebounce";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export default function Entnahmen() {
   const { user } = useAuth();
@@ -22,6 +23,10 @@ export default function Entnahmen() {
   const [isCrudDialogOpen, setIsCrudDialogOpen] = useState(false);
   const [crudMode, setCrudMode] = useState<'create' | 'return'>('create');
   const [crudEntnahme, setCrudEntnahme] = useState<any>(null);
+  
+  // Image Modal state
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   // Debounce search term with 300ms delay
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -84,6 +89,12 @@ export default function Entnahmen() {
     fetchEntnahmen(searchTerm);
   };
 
+  // Handle image modal
+  const handleImageClick = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setIsImageModalOpen(true);
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -127,6 +138,7 @@ export default function Entnahmen() {
           searchTerm={searchTerm}
           onCardClick={handleCardClick}
           onReturnEntnahme={handleReturnEntnahme}
+          onImageClick={handleImageClick}
         />
       </div>
 
@@ -135,6 +147,7 @@ export default function Entnahmen() {
         entnahme={selectedEntnahme}
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
+        onImageClick={handleImageClick}
       />
 
       {/* CRUD Dialog */}
@@ -145,6 +158,19 @@ export default function Entnahmen() {
         entnahme={crudEntnahme}
         onSuccess={handleCrudSuccess}
       />
+
+      {/* Image Modal */}
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent className='p-3'>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt='Item'
+              className='max-w-full max-h-full '
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
