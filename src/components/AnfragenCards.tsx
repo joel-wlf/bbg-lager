@@ -71,7 +71,7 @@ export function AnfragenCards({ anfragen, isLoading, onOpenDialog }: AnfragenCar
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {anfragen.map((anfrage) => (
-        <Card key={anfrage.id} className="hover:shadow-md transition-shadow">
+        <Card key={anfrage.id} className="hover:shadow-md transition-shadow gap-3">
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
