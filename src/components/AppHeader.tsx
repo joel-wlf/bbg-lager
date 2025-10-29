@@ -49,7 +49,7 @@ export default function AppHeader() {
           value={getCurrentTab()}
           onValueChange={(value) => navigate(`/${value}`)}
         >
-          <div className="w-screen px-4 may-w-4xl">
+          <div className="w-screen px-4 max-w-4xl">
             <TabsList className="w-full">
               <TabsTrigger value='items'>Gegenstände</TabsTrigger>
               <TabsTrigger value='kisten'>Kisten</TabsTrigger>
