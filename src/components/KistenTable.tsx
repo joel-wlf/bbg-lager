@@ -38,9 +38,37 @@ export function KistenTable({
         </div>
         
         {isLoading ? (
-          <div className='flex items-center justify-center py-8'>
-            <p className='text-gray-500'>Lade Kisten...</p>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Regal</TableHead>
+                <TableHead>Stellplatz</TableHead>
+                <TableHead>Aktionen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...Array(5)].map((_, i) => (
+                <TableRow key={i} className="animate-pulse">
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                      <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : kisten.length === 0 ? (
           <div className='flex items-center justify-center py-8'>
             <p className='text-gray-500'>

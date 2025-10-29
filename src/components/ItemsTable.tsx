@@ -54,9 +54,49 @@ export function ItemsTable({
         </div>
 
         {isLoading ? (
-          <div className='flex items-center justify-center py-8'>
-            <p className='text-gray-500'>Lade Gegenstände...</p>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Bestand</TableHead>
+                <TableHead>Bild</TableHead>
+                <TableHead>Organisation</TableHead>
+                <TableHead>Kiste</TableHead>
+                <TableHead>Anmerkungen</TableHead>
+                <TableHead>Aktionen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...Array(5)].map((_, i) => (
+                <TableRow key={i} className="animate-pulse">
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                      <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : items.length === 0 ? (
           <div className='flex items-center justify-center py-8'>
             <p className='text-gray-500'>
