@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -31,6 +32,7 @@ export function AnfragenDialog({
   onEntnahmeCreated,
 }: AnfragenDialogProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isCreatingEntnahme, setIsCreatingEntnahme] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -61,12 +63,18 @@ export function AnfragenDialog({
       };
 
       console.log("Creating entnahme with data:", entnahmeData);
-      await pb.collection("entnahmen").create(entnahmeData);
+      const createdEntnahme = await pb.collection("entnahmen").create(entnahmeData);
 
-      // Optionally, you could mark the anfrage as processed
-      // await pb.collection("anfragen").update(anfrage.id, { status: "processed" });
+      // Delete the anfrage after successful entnahme creation
+      await pb.collection("anfragen").delete(anfrage.id);
 
-      alert("Entnahme erfolgreich erstellt!");
+      // Close dialog
+      onClose();
+      
+      // Navigate to entnahmen page with the new entnahme ID highlighted
+      navigate(`/requests?highlight=${createdEntnahme.id}`);
+      
+      // Call the callback to refresh the anfragen list
       onEntnahmeCreated();
     } catch (error) {
       console.error("Error creating entnahme:", error);

@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { pb } from "@/lib/pocketbase";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import SearchHeader from "@/components/SearchHeader";
 import { EntnahmenCards } from "@/components/EntnahmenCards";
 import { EntnahmenDialog } from "@/components/EntnahmenDialog";
@@ -12,12 +12,14 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export default function Entnahmen() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [entnahmen, setEntnahmen] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedEntnahme, setSelectedEntnahme] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [highlightedEntnahmeId, setHighlightedEntnahmeId] = useState<string | null>(null);
   
   // CRUD Dialog state
   const [isCrudDialogOpen, setIsCrudDialogOpen] = useState(false);
@@ -39,6 +41,26 @@ export default function Entnahmen() {
   useEffect(() => {
     fetchEntnahmen(debouncedSearchTerm);
   }, [debouncedSearchTerm]);
+
+  // Handle highlight parameter from URL
+  useEffect(() => {
+    const highlightId = searchParams.get('highlight');
+    if (highlightId) {
+      setHighlightedEntnahmeId(highlightId);
+      
+      // Clear the highlight parameter from URL after setting it
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('highlight');
+      setSearchParams(newSearchParams, { replace: true });
+      
+      // Remove highlight after 5 seconds
+      const timer = setTimeout(() => {
+        setHighlightedEntnahmeId(null);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchEntnahmen = async (search = "") => {
     pb.autoCancellation(false)
@@ -140,6 +162,7 @@ export default function Entnahmen() {
           onCardClick={handleCardClick}
           onReturnEntnahme={handleReturnEntnahme}
           onImageClick={handleImageClick}
+          highlightedEntnahmeId={highlightedEntnahmeId}
         />
       </div>
 

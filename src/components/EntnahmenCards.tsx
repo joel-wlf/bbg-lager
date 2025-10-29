@@ -11,6 +11,7 @@ interface EntnahmenCardsProps {
   onCardClick: (entnahme: any) => void;
   onReturnEntnahme: (entnahme: any) => void;
   onImageClick: (imageUrl: string) => void;
+  highlightedEntnahmeId?: string | null;
 }
 
 export function EntnahmenCards({
@@ -20,6 +21,7 @@ export function EntnahmenCards({
   onCardClick,
   onReturnEntnahme,
   onImageClick,
+  highlightedEntnahmeId,
 }: EntnahmenCardsProps) {
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
@@ -90,10 +92,16 @@ export function EntnahmenCards({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {entnahmen.map((entnahme) => (
+      {entnahmen.map((entnahme) => {
+        const isHighlighted = highlightedEntnahmeId === entnahme.id;
+        return (
         <Card 
           key={entnahme.id} 
-          className="hover:shadow-lg transition-shadow gap-3"
+          className={`hover:shadow-lg transition-all duration-500 gap-3 ${
+            isHighlighted 
+              ? 'ring-2 ring-blue-500 shadow-lg bg-blue-50 border-blue-200' 
+              : ''
+          }`}
         >
           <CardHeader>
             <div className="flex justify-between items-start">
@@ -207,7 +215,8 @@ export function EntnahmenCards({
             )}
           </CardFooter>
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }
