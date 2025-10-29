@@ -93,7 +93,7 @@ export function EntnahmenCards({
       {entnahmen.map((entnahme) => (
         <Card 
           key={entnahme.id} 
-          className="hover:shadow-lg transition-shadow"
+          className="hover:shadow-lg transition-shadow gap-3"
         >
           <CardHeader>
             <div className="flex justify-between items-start">
