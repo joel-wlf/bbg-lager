@@ -189,7 +189,7 @@ export function EntnahmenCrudDialog({
       }
       await pb.collection("entnahmen").update(entnahme.id, formData);
 
-      const returnedBy = entnahme.expand?.user?.name || user?.name || "Unbekannt";
+      const returnedBy = entnahme.expand?.user?.name || user?.name || user?.email || "Unbekannt";
       await sendNtfyNotification({
         title: "Rückgabe bestätigt",
         tags: "white_check_mark,package",
