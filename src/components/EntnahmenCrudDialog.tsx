@@ -19,6 +19,7 @@ import { getImageUrl, pb } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 import { IconTrash } from "@tabler/icons-react";
 import SignatureCanvas from "react-signature-canvas";
+import { sendNtfyNotification } from "@/lib/notifications";
 
 interface EntnahmenCrudDialogProps {
   isOpen: boolean;
@@ -187,6 +188,17 @@ export function EntnahmenCrudDialog({
         formData.append("problems", JSON.stringify(problems));
       }
       await pb.collection("entnahmen").update(entnahme.id, formData);
+
+      const returnedBy = entnahme.expand?.user?.name || user?.name || user?.email || "Unbekannt";
+      await sendNtfyNotification({
+        title: "Rückgabe bestätigt",
+        tags: "white_check_mark,package",
+        priority: "default",
+        message: `Entnahme: ${entnahme.zweck || "-"}\nRückgegeben von: ${returnedBy}\nZeitpunkt: ${new Date().toLocaleString("de-DE")}${
+          problems.length > 0 ? `\nGemeldete Probleme: ${problems.length}` : ""
+        }`,
+      });
+
       onSuccess();
       onClose();
     } catch (error) {
