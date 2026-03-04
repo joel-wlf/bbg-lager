@@ -13,6 +13,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { getImageUrl, pb } from "@/lib/pocketbase";
+import { sendNtfyNotification } from "@/lib/notifications";
 
 interface AnfrageDialogProps {
   isOpen: boolean;
@@ -118,6 +119,15 @@ export function AnfrageDialog({
 
       console.log("Creating anfrage with data:", data);
       await pb.collection("anfragen").create(data);
+
+      await sendNtfyNotification({
+        title: "Neue Anfrage eingegangen",
+        tags: "inbox,package",
+        priority: "high",
+        message: `Name: ${data.name}\nZweck: ${data.zweck}\nBenötigt ab: ${new Date(
+          rausDate
+        ).toLocaleString("de-DE")}\nAnzahl Gegenstände: ${data.items.length}`,
+      });
       
       alert("Ihre Anfrage wurde erfolgreich erstellt!");
       onSuccess();
