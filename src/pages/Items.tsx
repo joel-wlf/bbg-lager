@@ -8,6 +8,53 @@ import { ItemsTable } from "@/components/ItemsTable";
 import { ItemDialogs } from "@/components/ItemDialogs";
 import { useDebounce } from "@/hooks/useDebounce";
 
+async function resizeImageTo720p(file: File): Promise<File> {
+  // Target maximum resolution 1280x720 while keeping aspect ratio
+  const MAX_WIDTH = 1280;
+  const MAX_HEIGHT = 720;
+
+  const imageBitmap = await createImageBitmap(file);
+
+  let { width, height } = imageBitmap;
+
+  const widthRatio = MAX_WIDTH / width;
+  const heightRatio = MAX_HEIGHT / height;
+  const scale = Math.min(1, widthRatio, heightRatio);
+
+  // If image is already smaller than or equal to 720p bounds, keep original
+  if (scale === 1) {
+    return file;
+  }
+
+  const targetWidth = Math.round(width * scale);
+  const targetHeight = Math.round(height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return file;
+  }
+
+  ctx.drawImage(imageBitmap, 0, 0, targetWidth, targetHeight);
+
+  const blob: Blob | null = await new Promise((resolve) =>
+    canvas.toBlob(
+      (result) => resolve(result),
+      "image/jpeg",
+      0.8 // quality
+    )
+  );
+
+  if (!blob) {
+    return file;
+  }
+
+  return new File([blob], file.name, { type: "image/jpeg" });
+}
+
 export default function Items() {
 
   const [items, setItems] = useState<any>([]);
@@ -136,7 +183,8 @@ export default function Items() {
       }
 
       if (formData.bild) {
-        data.append('bild', formData.bild);
+        const resizedImage = await resizeImageTo720p(formData.bild);
+        data.append('bild', resizedImage);
       }
 
       if (dialogMode === 'create') {
