@@ -156,8 +156,16 @@ function SelectSeparator({
 
 function SelectScrollUpButton({
   className,
+  onClick,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.ScrollUpButton>) {
+  const { trigger } = useWebHaptics();
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    trigger([{ duration: 25 }], { intensity: 0.75 });
+    onClick?.(e);
+  };
+
   return (
     <SelectPrimitive.ScrollUpButton
       data-slot='select-scroll-up-button'
@@ -165,6 +173,7 @@ function SelectScrollUpButton({
         "flex cursor-default items-center justify-center py-1",
         className,
       )}
+      onClick={handleClick}
       {...props}
     >
       <ChevronUpIcon className='size-4' />
@@ -174,8 +183,16 @@ function SelectScrollUpButton({
 
 function SelectScrollDownButton({
   className,
+  onClick,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.ScrollDownButton>) {
+  const { trigger } = useWebHaptics();
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    trigger([{ duration: 25 }], { intensity: 0.75 });
+    onClick?.(e);
+  };
+
   return (
     <SelectPrimitive.ScrollDownButton
       data-slot='select-scroll-down-button'
@@ -183,6 +200,7 @@ function SelectScrollDownButton({
         "flex cursor-default items-center justify-center py-1",
         className,
       )}
+      onClick={handleClick}
       {...props}
     >
       <ChevronDownIcon className='size-4' />

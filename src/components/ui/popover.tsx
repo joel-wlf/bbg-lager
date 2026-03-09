@@ -1,5 +1,6 @@
 import * as React from "react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
+import { useWebHaptics } from "web-haptics/react"
 
 import { cn } from "@/lib/utils"
 
@@ -10,9 +11,17 @@ function Popover({
 }
 
 function PopoverTrigger({
+  onClick,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
+  const { trigger } = useWebHaptics();
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    trigger([{ duration: 25 }], { intensity: 0.75 });
+    onClick?.(e);
+  };
+
+  return <PopoverPrimitive.Trigger data-slot="popover-trigger" onClick={handleClick} {...props} />
 }
 
 function PopoverContent({

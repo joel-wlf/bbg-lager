@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Check, ChevronDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useWebHaptics } from "web-haptics/react"
 
 interface MultiSelectProps {
   options: string[]
@@ -22,8 +23,10 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
+  const { trigger } = useWebHaptics();
 
   const handleSelect = (option: string) => {
+    trigger([{ duration: 25 }], { intensity: 0.75 });
     if (selected.includes(option)) {
       onChange(selected.filter(item => item !== option))
     } else {
@@ -32,6 +35,7 @@ export function MultiSelect({
   }
 
   const handleRemove = (option: string) => {
+    trigger([{ duration: 25 }], { intensity: 0.75 });
     onChange(selected.filter(item => item !== option))
   }
 

@@ -1,6 +1,7 @@
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
+import { useWebHaptics } from "web-haptics/react"
 
 import { cn } from "@/lib/utils"
 
@@ -11,9 +12,17 @@ function Dialog({
 }
 
 function DialogTrigger({
+  onClick,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+  const { trigger } = useWebHaptics();
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    trigger([{ duration: 25 }], { intensity: 0.75 });
+    onClick?.(e);
+  };
+
+  return <DialogPrimitive.Trigger data-slot="dialog-trigger" onClick={handleClick} {...props} />
 }
 
 function DialogPortal({
@@ -23,9 +32,17 @@ function DialogPortal({
 }
 
 function DialogClose({
+  onClick,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
+  const { trigger } = useWebHaptics();
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    trigger([{ duration: 25 }], { intensity: 0.75 });
+    onClick?.(e);
+  };
+
+  return <DialogPrimitive.Close data-slot="dialog-close" onClick={handleClick} {...props} />
 }
 
 function DialogOverlay({
