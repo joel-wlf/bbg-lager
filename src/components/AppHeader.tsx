@@ -1,7 +1,6 @@
 import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import {
-  IconBuilding,
   IconBuildingWarehouse,
   IconLogout,
 } from "@tabler/icons-react";
@@ -25,6 +24,7 @@ export default function AppHeader() {
     if (pathname.startsWith("/kisten")) return "kisten";
     if (pathname.startsWith("/requests")) return "requests";
     if (pathname.startsWith("/anfragen")) return "anfragen";
+    if (pathname.startsWith("/inventur")) return "inventur";
     return "items"; // fallback
   };
 
@@ -55,6 +55,7 @@ export default function AppHeader() {
               <TabsTrigger value='kisten'>Kisten</TabsTrigger>
               <TabsTrigger value='requests'>Entnahmen</TabsTrigger>
               <TabsTrigger value='anfragen'>Anfragen</TabsTrigger>
+              <TabsTrigger value='inventur'>Inventur</TabsTrigger>
             </TabsList>
           </div>
         </Tabs>
