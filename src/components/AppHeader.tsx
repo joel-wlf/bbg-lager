@@ -1,7 +1,6 @@
 import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import {
-  IconBuilding,
   IconBuildingWarehouse,
   IconLogout,
 } from "@tabler/icons-react";

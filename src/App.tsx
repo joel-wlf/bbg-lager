@@ -15,6 +15,7 @@ import Kisten from "./pages/Kisten";
 import Entnahmen from "./pages/Entnahmen";
 import Anfragen from "./pages/Anfragen";
 import PublicItems from "./pages/PublicItems";
+import Inventur from "./pages/Inventur";
 import AppHeader from "./components/AppHeader";
 
 function AppContent() {
@@ -76,6 +77,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Anfragen />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path='/inventur'
+            element={
+              <ProtectedRoute>
+                <Inventur />
               </ProtectedRoute>
             }
           />
