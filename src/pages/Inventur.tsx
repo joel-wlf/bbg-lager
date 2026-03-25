@@ -22,10 +22,13 @@ import {
   Users,
   Baby,
   Layers,
+  SlidersHorizontal,
+  Trash2,
 } from 'lucide-react';
 
 type Phase = 'area-select' | 'box-list' | 'swipe';
 type Area = 'Jugend' | 'Kinder' | 'Beides';
+type DialogStep = null | 'choice' | 'edit' | 'delete';
 
 interface InventurItem {
   id: string;
@@ -45,6 +48,10 @@ interface InventurKiste {
   regal: number;
   stellplatz: number;
   items: InventurItem[];
+}
+
+function haptic(pattern: number | number[]) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
 }
 
 // ---------------------------------------------------------------------------
@@ -71,9 +78,9 @@ function SwipeCard({
 
   const triggerSwipe = (dir: 'left' | 'right') => {
     if (flyDirection) return;
+    haptic(50);
     setIsAnimating(true);
     setFlyDirection(dir);
-    if (navigator.vibrate) navigator.vibrate(50);
     setTimeout(() => {
       if (dir === 'right') onSwipeRight();
       else onSwipeLeft();
@@ -124,7 +131,7 @@ function SwipeCard({
       }`}
       style={{
         transform: getTransform(),
-        cursor: flyDirection ? 'default' : isDraggingRef.current ? 'grabbing' : 'grab',
+        cursor: flyDirection ? 'default' : 'grab',
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -234,13 +241,14 @@ export default function Inventur() {
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Edit dialog
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editItem, setEditItem] = useState<InventurItem | null>(null);
+  // Dialog state
+  const [dialogStep, setDialogStep] = useState<DialogStep>(null);
+  const [dialogItem, setDialogItem] = useState<InventurItem | null>(null);
   const [editBestand, setEditBestand] = useState('');
   const [editAnmerkungen, setEditAnmerkungen] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const advanceAfterEditRef = useRef(false);
+  // Whether closing the dialog should advance to next item
+  const advanceOnCloseRef = useRef(false);
 
   // --------------------------------------------------
   const fetchData = async (area: Area) => {
@@ -286,6 +294,7 @@ export default function Inventur() {
   };
 
   const handleAreaSelect = (area: Area) => {
+    haptic(30);
     setSelectedArea(area);
     setCompletedKistenIds(new Set());
     fetchData(area);
@@ -293,34 +302,54 @@ export default function Inventur() {
   };
 
   const handleKisteSelect = (kiste: InventurKiste) => {
+    haptic(30);
     setSelectedKiste(kiste);
     setCurrentItemIndex(0);
     setPhase('swipe');
   };
 
-  const advanceItem = () => {
-    if (!selectedKiste) return;
-    const next = currentItemIndex + 1;
-    if (next >= selectedKiste.items.length) {
-      setCompletedKistenIds((prev) => new Set([...prev, selectedKiste.id]));
+  // Advance to next item; if last item, mark kiste as complete
+  const advanceItem = (kiste = selectedKiste, index = currentItemIndex) => {
+    if (!kiste) return;
+    const next = index + 1;
+    if (next >= kiste.items.length) {
+      haptic([40, 30, 80]);
+      setCompletedKistenIds((prev) => new Set([...prev, kiste.id]));
     }
     setCurrentItemIndex(next);
   };
 
-  const openEditDialog = (item: InventurItem, advanceAfter: boolean) => {
-    advanceAfterEditRef.current = advanceAfter;
-    setEditItem(item);
+  // Open dialog after swipe-left (card already flew away → always advance on close)
+  const openChoiceDialog = (item: InventurItem) => {
+    advanceOnCloseRef.current = true;
+    setDialogItem(item);
     setEditBestand(item.bestand.toString());
     setEditAnmerkungen(item.Anmerkungen || '');
-    setIsEditOpen(true);
+    setDialogStep('choice');
+  };
+
+  // Open edit dialog directly (pencil button → stay on card)
+  const openEditDialog = (item: InventurItem) => {
+    advanceOnCloseRef.current = false;
+    setDialogItem(item);
+    setEditBestand(item.bestand.toString());
+    setEditAnmerkungen(item.Anmerkungen || '');
+    setDialogStep('edit');
+  };
+
+  const closeDialog = () => {
+    const shouldAdvance = advanceOnCloseRef.current;
+    setDialogStep(null);
+    setDialogItem(null);
+    if (shouldAdvance) advanceItem();
   };
 
   const handleSaveEdit = async () => {
-    if (!editItem) return;
+    if (!dialogItem) return;
     setIsSaving(true);
     try {
       const newBestand = parseInt(editBestand) || 0;
-      await pb.collection('items').update(editItem.id, {
+      await pb.collection('items').update(dialogItem.id, {
         bestand: newBestand,
         Anmerkungen: editAnmerkungen,
       });
@@ -328,7 +357,7 @@ export default function Inventur() {
       // Sync local state
       if (selectedKiste) {
         const updatedItems = selectedKiste.items.map((i) =>
-          i.id === editItem.id
+          i.id === dialogItem.id
             ? { ...i, bestand: newBestand, Anmerkungen: editAnmerkungen }
             : i
         );
@@ -339,8 +368,7 @@ export default function Inventur() {
         );
       }
 
-      setIsEditOpen(false);
-      if (advanceAfterEditRef.current) advanceItem();
+      closeDialog();
     } catch (err) {
       console.error(err);
       alert('Fehler beim Speichern');
@@ -349,9 +377,36 @@ export default function Inventur() {
     }
   };
 
-  const handleSkipEdit = () => {
-    setIsEditOpen(false);
-    if (advanceAfterEditRef.current) advanceItem();
+  const handleDeleteItem = async () => {
+    if (!dialogItem || !selectedKiste) return;
+    setIsSaving(true);
+    try {
+      await pb.collection('items').delete(dialogItem.id);
+
+      // Remove item from local state; keep currentItemIndex as-is (next item slides in)
+      const updatedItems = selectedKiste.items.filter((i) => i.id !== dialogItem.id);
+      const updatedKiste = { ...selectedKiste, items: updatedItems };
+      setSelectedKiste(updatedKiste);
+      setKisten((prev) =>
+        prev.map((k) => (k.id === selectedKiste.id ? updatedKiste : k))
+      );
+
+      // If index now points past the end, the completion screen will show
+      // We just close without calling advanceItem (index stays the same, array shrank)
+      advanceOnCloseRef.current = false;
+      // But we still need to check if we hit the end
+      if (currentItemIndex >= updatedItems.length) {
+        haptic([40, 30, 80]);
+        setCompletedKistenIds((prev) => new Set([...prev, selectedKiste.id]));
+      }
+      setDialogStep(null);
+      setDialogItem(null);
+    } catch (err) {
+      console.error(err);
+      alert('Fehler beim Löschen');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // --------------------------------------------------
@@ -363,7 +418,9 @@ export default function Inventur() {
         <div className='max-w-md mx-auto pt-8 space-y-6'>
           <div className='text-center'>
             <h1 className='text-2xl font-bold'>Inventurmodus</h1>
-            <p className='text-gray-500 mt-1'>Für welchen Bereich soll die Inventur durchgeführt werden?</p>
+            <p className='text-gray-500 mt-1'>
+              Für welchen Bereich soll die Inventur durchgeführt werden?
+            </p>
           </div>
 
           <div className='space-y-3'>
@@ -371,7 +428,11 @@ export default function Inventur() {
               [
                 { area: 'Jugend' as Area, Icon: Users, desc: 'Nur Jugend-Gegenstände' },
                 { area: 'Kinder' as Area, Icon: Baby, desc: 'Nur Kinder-Gegenstände' },
-                { area: 'Beides' as Area, Icon: Layers, desc: 'Alle Gegenstände (Jugend & Kinder)' },
+                {
+                  area: 'Beides' as Area,
+                  Icon: Layers,
+                  desc: 'Alle Gegenstände (Jugend & Kinder)',
+                },
               ] as const
             ).map(({ area, Icon, desc }) => (
               <button
@@ -404,9 +465,12 @@ export default function Inventur() {
     return (
       <div className='min-h-screen bg-gray-50 p-4'>
         <div className='max-w-md mx-auto space-y-4'>
-          {/* Header */}
           <div className='flex items-center gap-2'>
-            <Button variant='ghost' size='icon' onClick={() => setPhase('area-select')}>
+            <Button
+              variant='ghost'
+              size='icon'
+              onClick={() => { haptic(20); setPhase('area-select'); }}
+            >
               <ChevronLeft className='w-5 h-5' />
             </Button>
             <div>
@@ -417,7 +481,6 @@ export default function Inventur() {
             </div>
           </div>
 
-          {/* Content */}
           {isLoading ? (
             <div className='text-center py-12 text-gray-400'>Lade Kisten...</div>
           ) : kisten.length === 0 ? (
@@ -447,7 +510,8 @@ export default function Inventur() {
                     <div className='flex-1 min-w-0'>
                       <div className='font-medium truncate'>{kiste.name}</div>
                       <div className='text-xs text-gray-500'>
-                        {hasLocation && `Regal ${kiste.regal}, Stellplatz ${kiste.stellplatz} · `}
+                        {hasLocation &&
+                          `Regal ${kiste.regal}, Stellplatz ${kiste.stellplatz} · `}
                         {kiste.items.length}{' '}
                         {kiste.items.length === 1 ? 'Gegenstand' : 'Gegenstände'}
                       </div>
@@ -463,7 +527,6 @@ export default function Inventur() {
             </div>
           )}
 
-          {/* All done banner */}
           {allDone && (
             <div className='bg-green-50 border border-green-200 rounded-xl p-4 text-center space-y-1'>
               <CheckCircle2 className='w-8 h-8 text-green-500 mx-auto' />
@@ -484,7 +547,6 @@ export default function Inventur() {
   const isComplete = currentItemIndex >= selectedKiste.items.length;
   const progress = (currentItemIndex / selectedKiste.items.length) * 100;
 
-  // Completion screen
   if (isComplete) {
     return (
       <div className='min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4'>
@@ -498,7 +560,11 @@ export default function Inventur() {
               {selectedKiste.name} wurde vollständig inventarisiert.
             </p>
           </div>
-          <Button className='w-full' size='lg' onClick={() => setPhase('box-list')}>
+          <Button
+            className='w-full'
+            size='lg'
+            onClick={() => { haptic(20); setPhase('box-list'); }}
+          >
             Zur Kistenliste
           </Button>
         </div>
@@ -512,7 +578,11 @@ export default function Inventur() {
     <div className='min-h-screen bg-gray-50 flex flex-col'>
       {/* Header */}
       <div className='p-4 pb-2 flex items-center gap-2'>
-        <Button variant='ghost' size='icon' onClick={() => setPhase('box-list')}>
+        <Button
+          variant='ghost'
+          size='icon'
+          onClick={() => { haptic(20); setPhase('box-list'); }}
+        >
           <ChevronLeft className='w-5 h-5' />
         </Button>
         <div className='flex-1 min-w-0'>
@@ -533,36 +603,72 @@ export default function Inventur() {
         </div>
       </div>
 
-      {/* Hint labels */}
+      {/* Hints */}
       <div className='flex justify-between px-6 pb-3 text-xs text-gray-400 select-none'>
         <span>← Fehlt</span>
         <span>Vorhanden →</span>
       </div>
 
-      {/* Swipe card area */}
+      {/* Card */}
       <div className='flex-1 flex items-start justify-center px-4 overflow-hidden'>
         <SwipeCard
           key={currentItem.id}
           item={currentItem}
-          onSwipeRight={advanceItem}
-          onSwipeLeft={() => openEditDialog(currentItem, true)}
-          onEdit={() => openEditDialog(currentItem, false)}
+          onSwipeRight={() => advanceItem()}
+          onSwipeLeft={() => openChoiceDialog(currentItem)}
+          onEdit={() => openEditDialog(currentItem)}
         />
       </div>
 
-      {/* Edit / quick-update dialog */}
-      <Dialog open={isEditOpen}>
+      {/* ---- Dialogs ---- */}
+
+      {/* Choice: Menge anpassen vs. Löschen */}
+      <Dialog open={dialogStep === 'choice'}>
         <DialogContent
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>{editItem?.name} bearbeiten</DialogTitle>
+            <DialogTitle>Was möchtest du tun?</DialogTitle>
             <DialogDescription>
-              Bestand und Anmerkungen anpassen.
+              <span className='font-medium text-foreground'>{dialogItem?.name}</span> fehlt
+              oder hat ein Problem.
             </DialogDescription>
           </DialogHeader>
+          <div className='grid grid-cols-2 gap-3 py-2'>
+            <button
+              onClick={() => setDialogStep('edit')}
+              className='flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all'
+            >
+              <SlidersHorizontal className='w-7 h-7 text-blue-600' />
+              <span className='text-sm font-medium'>Menge anpassen</span>
+            </button>
+            <button
+              onClick={() => setDialogStep('delete')}
+              className='flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-red-400 hover:bg-red-50 transition-all'
+            >
+              <Trash2 className='w-7 h-7 text-red-600' />
+              <span className='text-sm font-medium text-red-600'>Löschen</span>
+            </button>
+          </div>
+          <DialogFooter>
+            <Button variant='outline' className='w-full' onClick={closeDialog}>
+              Überspringen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
+      {/* Edit: Menge / Anmerkungen */}
+      <Dialog open={dialogStep === 'edit'}>
+        <DialogContent
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>{dialogItem?.name} bearbeiten</DialogTitle>
+            <DialogDescription>Bestand und Anmerkungen anpassen.</DialogDescription>
+          </DialogHeader>
           <div className='space-y-4 py-2'>
             <div>
               <Label htmlFor='inv-bestand'>Bestand</Label>
@@ -584,17 +690,49 @@ export default function Inventur() {
               />
             </div>
           </div>
-
           <DialogFooter>
             <Button
               variant='outline'
-              onClick={handleSkipEdit}
+              onClick={closeDialog}
               disabled={isSaving}
             >
-              {advanceAfterEditRef.current ? 'Überspringen' : 'Abbrechen'}
+              {advanceOnCloseRef.current ? 'Überspringen' : 'Abbrechen'}
             </Button>
             <Button onClick={handleSaveEdit} disabled={isSaving}>
               {isSaving ? 'Speichern...' : 'Speichern'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <Dialog open={dialogStep === 'delete'}>
+        <DialogContent
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>Gegenstand löschen</DialogTitle>
+            <DialogDescription>
+              Soll{' '}
+              <span className='font-medium text-foreground'>"{dialogItem?.name}"</span>{' '}
+              dauerhaft gelöscht werden? Diese Aktion kann nicht rückgängig gemacht werden.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => setDialogStep('choice')}
+              disabled={isSaving}
+            >
+              Zurück
+            </Button>
+            <Button
+              variant='destructive'
+              onClick={handleDeleteItem}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Löschen...' : 'Löschen'}
             </Button>
           </DialogFooter>
         </DialogContent>

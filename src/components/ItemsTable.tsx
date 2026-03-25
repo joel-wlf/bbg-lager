@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getImageUrl } from "@/lib/pocketbase";
-import { Edit, Plus, Trash2, MapPin, Archive } from "lucide-react";
+import { Edit, Plus, Trash2, MapPin, Archive, ClipboardList } from "lucide-react";
 import { useState } from "react";
 import { IconColumns3, IconSelectAll } from "@tabler/icons-react";
 
@@ -27,6 +27,7 @@ interface ItemsTableProps {
   onEditItem: (item: any) => void;
   onDeleteItem: (item: any) => void;
   onImageClick: (imageUrl: string) => void;
+  onInventur: () => void;
 }
 
 export function ItemsTable({
@@ -37,6 +38,7 @@ export function ItemsTable({
   onEditItem,
   onDeleteItem,
   onImageClick,
+  onInventur,
 }: ItemsTableProps) {
   const [openPopover, setOpenPopover] = useState<string | null>(null);
 
@@ -50,6 +52,10 @@ export function ItemsTable({
           <Button onClick={onCreateItem} className='flex items-center gap-2'>
             <Plus className='w-4 h-4' />
             Neu
+          </Button>
+          <Button variant='outline' onClick={onInventur} className='flex items-center gap-2 ml-auto'>
+            <ClipboardList className='w-4 h-4' />
+            Inventur
           </Button>
         </div>
 

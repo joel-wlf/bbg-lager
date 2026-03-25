@@ -2,7 +2,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { getImageUrl, pb } from "@/lib/pocketbase";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import SearchHeader from "@/components/SearchHeader";
 import { ItemsTable } from "@/components/ItemsTable";
 import { ItemDialogs } from "@/components/ItemDialogs";
@@ -56,6 +56,7 @@ async function resizeImageTo720p(file: File): Promise<File> {
 }
 
 export default function Items() {
+  const navigate = useNavigate();
 
   const [items, setItems] = useState<any>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -252,6 +253,7 @@ export default function Items() {
           onEditItem={handleEdit}
           onDeleteItem={handleDelete}
           onImageClick={handleImageClick}
+          onInventur={() => navigate('/inventur')}
         />
       </div>
 
