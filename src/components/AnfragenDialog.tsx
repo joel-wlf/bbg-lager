@@ -65,11 +65,8 @@ export function AnfragenDialog({
       console.log("Creating entnahme with data:", entnahmeData);
       const createdEntnahme = await pb.collection("entnahmen").create(entnahmeData);
 
-      // Update anfrage status instead of deleting it
-      await pb.collection("anfragen").update(anfrage.id, {
-        status: "angenommen",
-        entnahme_ref: createdEntnahme.id,
-      });
+      // Delete the anfrage after successful entnahme creation
+      await pb.collection("anfragen").delete(anfrage.id);
 
       // Close dialog
       onClose();
