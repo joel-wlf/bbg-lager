@@ -12,6 +12,7 @@ interface EntnahmenCardsProps {
   onReturnEntnahme: (entnahme: any) => void;
   onImageClick: (imageUrl: string) => void;
   highlightedEntnahmeId?: string | null;
+  conflictsMap?: Record<string, string[]>;
 }
 
 export function EntnahmenCards({
@@ -22,6 +23,7 @@ export function EntnahmenCards({
   onReturnEntnahme,
   onImageClick,
   highlightedEntnahmeId,
+  conflictsMap = {},
 }: EntnahmenCardsProps) {
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
@@ -212,6 +214,16 @@ export function EntnahmenCards({
                 </div>
               )}
             </div>
+
+            {/* Conflict indicator */}
+            {conflictsMap[entnahme.id] && (
+              <div className="flex items-start gap-2 p-2 bg-yellow-50 border border-yellow-300 rounded">
+                <AlertTriangle className="w-4 h-4 text-yellow-600 shrink-0 mt-0.5" />
+                <span className="text-xs text-yellow-800 font-medium">
+                  Konflikt: {conflictsMap[entnahme.id].join(", ")} {conflictsMap[entnahme.id].length === 1 ? "wird" : "werden"} angefragt
+                </span>
+              </div>
+            )}
 
             {/* Problems indicator */}
             {hasProblems(entnahme) && (
