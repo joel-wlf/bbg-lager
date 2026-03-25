@@ -8,9 +8,11 @@ export default function Anfragen() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAnfrage, setSelectedAnfrage] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [activeEntnahmenItemIds, setActiveEntnahmenItemIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchAnfragen();
+    fetchActiveEntnahmenItems();
   }, []);
 
   const fetchAnfragen = async () => {
@@ -28,6 +30,24 @@ export default function Anfragen() {
     }
   };
 
+  const fetchActiveEntnahmenItems = async () => {
+    try {
+      pb.autoCancellation(false);
+      const result = await pb.collection("entnahmen").getFullList({
+        fields: "id,rein,items",
+      });
+      const ids = new Set<string>();
+      for (const e of result) {
+        if (!e.rein) {
+          for (const itemId of e.items || []) ids.add(itemId);
+        }
+      }
+      setActiveEntnahmenItemIds(ids);
+    } catch (error) {
+      console.error("Error fetching active entnahmen:", error);
+    }
+  };
+
   const handleOpenDialog = (anfrage: any) => {
     setSelectedAnfrage(anfrage);
     setIsDialogOpen(true);
@@ -39,19 +59,30 @@ export default function Anfragen() {
   };
 
   const handleEntnahmeCreated = () => {
-    // Refresh the anfragen list after creating an entnahme
     fetchAnfragen();
+    fetchActiveEntnahmenItems();
     handleCloseDialog();
   };
+
+  // Compute conflicts: anfrage items that are currently in an active Entnahme
+  const conflictsMap: Record<string, string[]> = {};
+  for (const anfrage of anfragen) {
+    const names: string[] = [];
+    for (const item of anfrage.expand?.items || []) {
+      if (activeEntnahmenItemIds.has(item.id)) names.push(item.name);
+    }
+    if (names.length > 0) conflictsMap[anfrage.id] = names;
+  }
 
   return (
     <div className='min-h-screen bg-gray-50 p-4'>
       <div className='max-w-4xl mx-auto space-y-6'>
-        
+
         <AnfragenCards
           anfragen={anfragen}
           isLoading={isLoading}
           onOpenDialog={handleOpenDialog}
+          conflictsMap={conflictsMap}
         />
 
         {selectedAnfrage && (

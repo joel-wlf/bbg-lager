@@ -1,15 +1,16 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Package, User, Eye } from "lucide-react";
+import { Calendar, Package, User, Eye, AlertTriangle } from "lucide-react";
 
 interface AnfragenCardsProps {
   anfragen: any[];
   isLoading: boolean;
   onOpenDialog: (anfrage: any) => void;
+  conflictsMap?: Record<string, string[]>;
 }
 
-export function AnfragenCards({ anfragen, isLoading, onOpenDialog }: AnfragenCardsProps) {
+export function AnfragenCards({ anfragen, isLoading, onOpenDialog, conflictsMap = {} }: AnfragenCardsProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("de-DE", {
       year: "numeric",
@@ -88,6 +89,16 @@ export function AnfragenCards({ anfragen, isLoading, onOpenDialog }: AnfragenCar
           </CardHeader>
           
           <CardContent className="space-y-4">
+            {/* Conflict indicator */}
+            {conflictsMap[anfrage.id] && (
+              <div className="flex items-start gap-2 p-2 bg-yellow-50 border border-yellow-300 rounded">
+                <AlertTriangle className="w-4 h-4 text-yellow-600 shrink-0 mt-0.5" />
+                <span className="text-xs text-yellow-800 font-medium">
+                  Konflikt: {conflictsMap[anfrage.id].join(", ")} {conflictsMap[anfrage.id].length === 1 ? "ist" : "sind"} gerade ausgeliehen
+                </span>
+              </div>
+            )}
+
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <User className="w-4 h-4 text-gray-400" />
