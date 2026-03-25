@@ -15,6 +15,7 @@ import Kisten from "./pages/Kisten";
 import Entnahmen from "./pages/Entnahmen";
 import Anfragen from "./pages/Anfragen";
 import PublicItems from "./pages/PublicItems";
+import MeineAnfragen from "./pages/MeineAnfragen";
 import AppHeader from "./components/AppHeader";
 
 function AppContent() {
@@ -44,6 +45,10 @@ function AppContent() {
           <Route
             path='/public-items'
             element={<PublicItems />}
+          />
+          <Route
+            path='/meine-anfragen'
+            element={<MeineAnfragen />}
           />
 
           {/* Protected Routes */}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -11,9 +12,11 @@ import {
   Package,
   User,
   MessageSquare,
+  CheckCircle,
 } from "lucide-react";
 import { getImageUrl, pb } from "@/lib/pocketbase";
 import { sendNtfyNotification } from "@/lib/notifications";
+import { getDeviceToken } from "@/lib/deviceToken";
 
 interface AnfrageDialogProps {
   isOpen: boolean;
@@ -28,6 +31,7 @@ export function AnfrageDialog({
 }: AnfrageDialogProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [availableItems, setAvailableItems] = useState<any[]>([]);
 
   // Form data
@@ -41,6 +45,7 @@ export function AnfrageDialog({
   useEffect(() => {
     if (isOpen) {
       setCurrentStep(1);
+      setIsSuccess(false);
       setFormData({ name: "", zweck: "", raus: "", selectedItemIds: [] });
       fetchAvailableItems();
     }
@@ -115,6 +120,8 @@ export function AnfrageDialog({
         zweck: formData.zweck,
         raus: rausDate,
         items: formData.selectedItemIds,
+        device_token: getDeviceToken(),
+        status: "ausstehend",
       };
 
       console.log("Creating anfrage with data:", data);
@@ -128,10 +135,9 @@ export function AnfrageDialog({
           rausDate
         ).toLocaleString("de-DE")}\nAnzahl Gegenstände: ${data.items.length}`,
       });
-      
-      alert("Ihre Anfrage wurde erfolgreich erstellt!");
+
+      setIsSuccess(true);
       onSuccess();
-      onClose();
     } catch (error) {
       console.error("Error creating anfrage:", error);
       alert("Fehler beim Erstellen der Anfrage");
@@ -257,6 +263,24 @@ export function AnfrageDialog({
     </div>
   );
 
+  const renderSuccess = () => (
+    <div className='flex flex-col items-center gap-4 py-6 text-center'>
+      <CheckCircle className='w-12 h-12 text-green-500' />
+      <h3 className='text-lg font-semibold'>Anfrage erfolgreich gesendet!</h3>
+      <p className='text-gray-600 text-sm'>
+        Ihre Anfrage wurde erfasst. Sobald sie bearbeitet wird, können Sie den Status und den Abholort unter "Meine Anfragen" einsehen.
+      </p>
+      <div className='flex flex-col gap-2 w-full'>
+        <Link to='/meine-anfragen' onClick={onClose}>
+          <Button className='w-full'>Meine Anfragen anzeigen</Button>
+        </Link>
+        <Button variant='outline' onClick={onClose} className='w-full'>
+          Schließen
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
@@ -267,7 +291,7 @@ export function AnfrageDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className='space-y-6'>
+        {isSuccess ? renderSuccess() : <div className='space-y-6'>
           {/* Progress indicator */}
           <div className='flex items-center gap-2'>
             <div
@@ -315,7 +339,7 @@ export function AnfrageDialog({
                 : "Anfrage erstellen"}
             </Button>
           </div>
-        </div>
+        </div>}
       </DialogContent>
     </Dialog>
   );

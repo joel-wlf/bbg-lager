@@ -21,7 +21,10 @@ export function AnfragenCards({ anfragen, isLoading, onOpenDialog }: AnfragenCar
   };
 
   const getStatusBadge = (anfrage: any) => {
-    // You can extend this logic based on your needs
+    if (anfrage.status === "angenommen") {
+      return <Badge className="bg-green-500 text-white hover:bg-green-600">Angenommen</Badge>;
+    }
+
     const createdDate = new Date(anfrage.created);
     const now = new Date();
     const diffHours = (now.getTime() - createdDate.getTime()) / (1000 * 3600);
@@ -126,13 +129,14 @@ export function AnfragenCards({ anfragen, isLoading, onOpenDialog }: AnfragenCar
                 <span>Erstellt: {formatDate(anfrage.created)}</span>
               </div>
               
-              <Button 
+              <Button
                 onClick={() => onOpenDialog(anfrage)}
                 className="w-full"
                 size="sm"
+                disabled={anfrage.status === "angenommen"}
               >
                 <Eye className="w-4 h-4 mr-2" />
-                Details anzeigen
+                {anfrage.status === "angenommen" ? "Bereits angenommen" : "Details anzeigen"}
               </Button>
             </div>
           </CardContent>

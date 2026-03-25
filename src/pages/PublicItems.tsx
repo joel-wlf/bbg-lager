@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import SearchHeader from "@/components/SearchHeader";
 import { useDebounce } from "@/hooks/useDebounce";
 import { PublicItemsTable } from "@/components/PublicItemsTable";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ClipboardList } from "lucide-react";
 
 export default function PublicItems() {
   const [items, setItems] = useState<any>([]);
@@ -72,6 +72,12 @@ export default function PublicItems() {
               <Button variant='outline' className='flex items-center gap-2'>
                 <ArrowLeft className='w-4 h-4' />
                 Zurück zum Login
+              </Button>
+            </Link>
+            <Link to='/meine-anfragen'>
+              <Button variant='outline' className='flex items-center gap-2'>
+                <ClipboardList className='w-4 h-4' />
+                Meine Anfragen
               </Button>
             </Link>
           </div>
