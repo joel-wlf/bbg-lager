@@ -1,14 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- iOS-style rounded square background -->
-  <rect width="512" height="512" rx="114" fill="#1c1c22"/>
-  <!-- Box body -->
-  <rect x="106" y="248" width="300" height="188" rx="14" fill="#e07830"/>
-  <!-- Box lid - left flap -->
-  <path d="M106 248 L106 192 L256 158 L256 248 Z" fill="#c86010"/>
-  <!-- Box lid - right flap -->
-  <path d="M406 248 L406 192 L256 158 L256 248 Z" fill="#b05008"/>
-  <!-- Tape strip -->
-  <rect x="232" y="158" width="48" height="278" rx="6" fill="#f8a050"/>
-  <!-- Tape horizontal band -->
-  <rect x="106" y="294" width="300" height="36" rx="0" fill="#f8a050" opacity="0.4"/>
+  <!-- Full-bleed background — iOS applies its own corner rounding -->
+  <rect width="512" height="512" fill="#1c1c22"/>
+  <!-- Roof -->
+  <path d="M72 234 L256 124 L440 234 Z" fill="#e07830"/>
+  <!-- Building body -->
+  <rect x="92" y="228" width="328" height="196" fill="#e07830"/>
+  <!-- Left window -->
+  <rect x="122" y="264" width="80" height="56" rx="8" fill="#1c1c22"/>
+  <!-- Right window -->
+  <rect x="310" y="264" width="80" height="56" rx="8" fill="#1c1c22"/>
+  <!-- Door -->
+  <rect x="206" y="312" width="100" height="112" rx="8" fill="#1c1c22"/>
+  <!-- Door handle -->
+  <circle cx="295" cy="372" r="8" fill="#e07830"/>
 </svg>
