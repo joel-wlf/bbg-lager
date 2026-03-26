@@ -28,6 +28,7 @@ interface ItemsTableProps {
   onDeleteItem: (item: any) => void;
   onImageClick: (imageUrl: string) => void;
   onInventur: () => void;
+  onItemClick: (item: any) => void;
 }
 
 interface KisteGroup {
@@ -82,6 +83,7 @@ export function ItemsTable({
   onDeleteItem,
   onImageClick,
   onInventur,
+  onItemClick,
 }: ItemsTableProps) {
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -199,10 +201,14 @@ export function ItemsTable({
 
                     {/* Item rows */}
                     {!isCollapsed && group.items.map((item) => (
-                      <TableRow key={item.id}>
+                      <TableRow
+                        key={item.id}
+                        className="cursor-pointer hover:bg-blue-50/50"
+                        onClick={() => onItemClick(item)}
+                      >
                         <TableCell className='font-medium'>{item.name}</TableCell>
                         <TableCell>{item.bestand} Stk.</TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           {item.bild ? (
                             <img
                               src={getImageUrl("items", item.id, item.bild, true)}
@@ -266,7 +272,7 @@ export function ItemsTable({
                             <span className='text-muted-foreground'>-</span>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className='flex items-center gap-2'>
                             <Button variant='outline' size='icon-sm' onClick={() => onEditItem(item)} title='Bearbeiten'>
                               <Edit className='w-4 h-4' />

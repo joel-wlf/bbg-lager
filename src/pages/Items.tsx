@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import SearchHeader from "@/components/SearchHeader";
 import { ItemsTable } from "@/components/ItemsTable";
 import { ItemDialogs } from "@/components/ItemDialogs";
+import { ItemDetailDialog } from "@/components/ItemDetailDialog";
 import { useDebounce } from "@/hooks/useDebounce";
 
 async function resizeImageTo720p(file: File): Promise<File> {
@@ -67,6 +68,10 @@ export default function Items() {
 
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Detail dialog state
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<any>(null);
 
   // CRUD Dialog state
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
@@ -132,6 +137,12 @@ export default function Items() {
       kiste: "",
       bild: null
     });
+  };
+
+  // Open detail dialog on row click
+  const handleItemClick = (item: any) => {
+    setDetailItem(item);
+    setIsDetailDialogOpen(true);
   };
 
   // Open create dialog
@@ -254,6 +265,7 @@ export default function Items() {
           onDeleteItem={handleDelete}
           onImageClick={handleImageClick}
           onInventur={() => navigate('/inventur')}
+          onItemClick={handleItemClick}
         />
       </div>
 
@@ -269,6 +281,18 @@ export default function Items() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Item Detail Dialog */}
+      <ItemDetailDialog
+        item={detailItem}
+        isOpen={isDetailDialogOpen}
+        onClose={() => setIsDetailDialogOpen(false)}
+        onSaved={(updated) => {
+          setItems((prev: any[]) =>
+            prev.map((i) => (i.id === updated.id ? updated : i))
+          );
+        }}
+      />
 
       {/* CRUD Dialogs */}
       <ItemDialogs
