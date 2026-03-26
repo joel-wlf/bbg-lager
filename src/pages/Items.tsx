@@ -61,8 +61,9 @@ export default function Items() {
 
   const [items, setItems] = useState<any>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [organisationFilter, setOrganisationFilter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Debounce search term with 300ms delay
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
@@ -94,20 +95,24 @@ export default function Items() {
     fetchItems();
   }, []);
 
-  // Trigger search when debounced search term changes
+  // Trigger search when debounced search term or organisation filter changes
   useEffect(() => {
-    fetchItems(debouncedSearchTerm);
-  }, [debouncedSearchTerm]);
+    fetchItems(debouncedSearchTerm, organisationFilter);
+  }, [debouncedSearchTerm, organisationFilter]);
 
-  const fetchItems = async (search = "") => {
+  const fetchItems = async (search = "", orgFilter: string | null = null) => {
     setIsLoading(true);
     try {
       pb.autoCancellation(false);
 
-      let filter = "";
+      const filters: string[] = [];
       if (search.trim()) {
-        filter = `name ~ "${search}"`;
+        filters.push(`name ~ "${search}"`);
       }
+      if (orgFilter) {
+        filters.push(`organisation ?= "${orgFilter}"`);
+      }
+      const filter = filters.join(" && ");
 
       const resultList = await pb.collection("items").getFullList({
         filter: filter,
@@ -124,7 +129,7 @@ export default function Items() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchItems(searchTerm);
+    fetchItems(searchTerm, organisationFilter);
   };
 
   // Reset form data
@@ -260,6 +265,8 @@ export default function Items() {
           items={items}
           isLoading={isLoading}
           searchTerm={searchTerm}
+          organisationFilter={organisationFilter}
+          onOrganisationFilterChange={setOrganisationFilter}
           onCreateItem={handleCreate}
           onEditItem={handleEdit}
           onDeleteItem={handleDelete}
