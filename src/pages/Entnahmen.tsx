@@ -17,6 +17,7 @@ export default function Entnahmen() {
   const [entnahmen, setEntnahmen] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [anfrageItemIds, setAnfrageItemIds] = useState<Set<string>>(new Set());
   const [selectedEntnahme, setSelectedEntnahme] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [highlightedEntnahmeId, setHighlightedEntnahmeId] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export default function Entnahmen() {
 
   useEffect(() => {
     fetchEntnahmen();
+    fetchAnfrageItems();
   }, []);
 
   // Trigger search when debounced search term changes
@@ -108,8 +110,25 @@ export default function Entnahmen() {
     setIsCrudDialogOpen(true);
   };
 
+  const fetchAnfrageItems = async () => {
+    try {
+      pb.autoCancellation(false);
+      const result = await pb.collection("anfragen").getFullList({
+        fields: "id,items",
+      });
+      const ids = new Set<string>();
+      for (const a of result) {
+        for (const itemId of a.items || []) ids.add(itemId);
+      }
+      setAnfrageItemIds(ids);
+    } catch (error) {
+      console.error("Error fetching anfrage items:", error);
+    }
+  };
+
   const handleCrudSuccess = () => {
     fetchEntnahmen(searchTerm);
+    fetchAnfrageItems();
   };
 
   // Handle image modal
@@ -155,15 +174,29 @@ export default function Entnahmen() {
         />
         
         {/* Entnahmen Cards */}
-        <EntnahmenCards
-          entnahmen={entnahmen}
-          isLoading={isLoading}
-          searchTerm={searchTerm}
-          onCardClick={handleCardClick}
-          onReturnEntnahme={handleReturnEntnahme}
-          onImageClick={handleImageClick}
-          highlightedEntnahmeId={highlightedEntnahmeId}
-        />
+        {(() => {
+          const conflictsMap: Record<string, string[]> = {};
+          for (const e of entnahmen) {
+            if (e.rein) continue;
+            const names: string[] = [];
+            for (const item of e.expand?.items || []) {
+              if (anfrageItemIds.has(item.id)) names.push(item.name);
+            }
+            if (names.length > 0) conflictsMap[e.id] = names;
+          }
+          return (
+            <EntnahmenCards
+              entnahmen={entnahmen}
+              isLoading={isLoading}
+              searchTerm={searchTerm}
+              onCardClick={handleCardClick}
+              onReturnEntnahme={handleReturnEntnahme}
+              onImageClick={handleImageClick}
+              highlightedEntnahmeId={highlightedEntnahmeId}
+              conflictsMap={conflictsMap}
+            />
+          );
+        })()}
       </div>
 
       {/* Entnahme Details Dialog */}
