@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -19,10 +20,14 @@ import { Edit, Plus, Trash2, MapPin, Archive, ClipboardList, ChevronDown, Chevro
 import { useState } from "react";
 import { IconColumns3, IconSelectAll } from "@tabler/icons-react";
 
+const ORGANISATION_OPTIONS = ["Jugend", "Kinder"];
+
 interface ItemsTableProps {
   items: any[];
   isLoading: boolean;
   searchTerm: string;
+  organisationFilter: string | null;
+  onOrganisationFilterChange: (filter: string | null) => void;
   onCreateItem: () => void;
   onEditItem: (item: any) => void;
   onDeleteItem: (item: any) => void;
@@ -79,6 +84,8 @@ export function ItemsTable({
   items,
   isLoading,
   searchTerm,
+  organisationFilter,
+  onOrganisationFilterChange,
   onCreateItem,
   onEditItem,
   onDeleteItem,
@@ -108,11 +115,27 @@ export function ItemsTable({
   return (
     <Card>
       <CardContent className='p-0'>
-        <div className='p-4 pt-0 border-b flex gap-2'>
+        <div className='p-4 pt-0 border-b flex flex-wrap gap-2'>
           <Button onClick={onCreateItem} className='flex items-center gap-2'>
             <Plus className='w-4 h-4' />
             Neu
           </Button>
+          <div className='flex items-center gap-1'>
+            {ORGANISATION_OPTIONS.map((org) => (
+              <Button
+                key={org}
+                variant='outline'
+                size='sm'
+                onClick={() => onOrganisationFilterChange(organisationFilter === org ? null : org)}
+                className={cn(
+                  'text-xs',
+                  organisationFilter === org && 'bg-primary text-primary-foreground hover:bg-primary/90'
+                )}
+              >
+                {org}
+              </Button>
+            ))}
+          </div>
           <Button variant='outline' onClick={onShelfView} className='flex items-center gap-2 ml-auto'>
             <LayoutGrid className='w-4 h-4' />
             Regalansicht
