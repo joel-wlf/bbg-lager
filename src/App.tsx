@@ -16,6 +16,7 @@ import Entnahmen from "./pages/Entnahmen";
 import Anfragen from "./pages/Anfragen";
 import PublicItems from "./pages/PublicItems";
 import Inventur from "./pages/Inventur";
+import ShelfView3D from "./pages/ShelfView3D";
 import AppHeader from "./components/AppHeader";
 
 function AppContent() {
@@ -85,6 +86,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Inventur />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path='/shelf-view'
+            element={
+              <ProtectedRoute>
+                <ShelfView3D />
               </ProtectedRoute>
             }
           />

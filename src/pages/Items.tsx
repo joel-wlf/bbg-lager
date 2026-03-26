@@ -265,6 +265,7 @@ export default function Items() {
           onDeleteItem={handleDelete}
           onImageClick={handleImageClick}
           onInventur={() => navigate('/inventur')}
+          onShelfView={() => navigate('/shelf-view')}
           onItemClick={handleItemClick}
         />
       </div>
