@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getImageUrl } from "@/lib/pocketbase";
-import { Edit, Plus, Trash2, MapPin, Archive, ClipboardList, ChevronDown, ChevronRight, Box } from "lucide-react";
+import { Edit, Plus, Trash2, MapPin, Archive, ClipboardList, ChevronDown, ChevronRight, Box, LayoutGrid } from "lucide-react";
 import { useState } from "react";
 import { IconColumns3, IconSelectAll } from "@tabler/icons-react";
 
@@ -28,6 +28,7 @@ interface ItemsTableProps {
   onDeleteItem: (item: any) => void;
   onImageClick: (imageUrl: string) => void;
   onInventur: () => void;
+  onShelfView: () => void;
   onItemClick: (item: any) => void;
 }
 
@@ -83,6 +84,7 @@ export function ItemsTable({
   onDeleteItem,
   onImageClick,
   onInventur,
+  onShelfView,
   onItemClick,
 }: ItemsTableProps) {
   const [openPopover, setOpenPopover] = useState<string | null>(null);
@@ -111,7 +113,11 @@ export function ItemsTable({
             <Plus className='w-4 h-4' />
             Neu
           </Button>
-          <Button variant='outline' onClick={onInventur} className='flex items-center gap-2 ml-auto'>
+          <Button variant='outline' onClick={onShelfView} className='flex items-center gap-2 ml-auto'>
+            <LayoutGrid className='w-4 h-4' />
+            Regalansicht
+          </Button>
+          <Button variant='outline' onClick={onInventur} className='flex items-center gap-2'>
             <ClipboardList className='w-4 h-4' />
             Inventur
           </Button>
