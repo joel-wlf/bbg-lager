@@ -115,35 +115,45 @@ export function ItemsTable({
   return (
     <Card>
       <CardContent className='p-0'>
-        <div className='p-4 pt-0 border-b flex flex-wrap gap-2'>
-          <Button onClick={onCreateItem} className='flex items-center gap-2'>
-            <Plus className='w-4 h-4' />
-            Neu
-          </Button>
-          <div className='flex items-center gap-1'>
-            {ORGANISATION_OPTIONS.map((org) => (
-              <Button
-                key={org}
-                variant='outline'
-                size='sm'
-                onClick={() => onOrganisationFilterChange(organisationFilter === org ? null : org)}
-                className={cn(
-                  'text-xs',
-                  organisationFilter === org && 'bg-primary text-primary-foreground hover:bg-primary/90'
-                )}
-              >
-                {org}
-              </Button>
-            ))}
+        <div className='p-4 pt-0 border-b flex items-center justify-between gap-2'>
+          <div className='flex items-center gap-2'>
+            <Button onClick={onCreateItem} size='sm' className='flex items-center gap-1.5'>
+              <Plus className='w-4 h-4' />
+              Neu
+            </Button>
+            <div className='flex items-center gap-1'>
+              {ORGANISATION_OPTIONS.map((org) => (
+                <Button
+                  key={org}
+                  variant='outline'
+                  size='sm'
+                  onClick={() => onOrganisationFilterChange(organisationFilter === org ? null : org)}
+                  className={cn(
+                    'text-xs',
+                    organisationFilter === org && 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  )}
+                >
+                  {org}
+                </Button>
+              ))}
+            </div>
           </div>
-          <Button variant='outline' onClick={onShelfView} className='flex items-center gap-2 ml-auto'>
-            <LayoutGrid className='w-4 h-4' />
-            Regalansicht
-          </Button>
-          <Button variant='outline' onClick={onInventur} className='flex items-center gap-2'>
-            <ClipboardList className='w-4 h-4' />
-            Inventur
-          </Button>
+          <div className='flex items-center gap-1.5 shrink-0'>
+            <Button variant='outline' size='icon-sm' onClick={onShelfView} title='Regalansicht' className='sm:hidden'>
+              <LayoutGrid className='w-4 h-4' />
+            </Button>
+            <Button variant='outline' onClick={onShelfView} className='hidden sm:flex items-center gap-2'>
+              <LayoutGrid className='w-4 h-4' />
+              Regalansicht
+            </Button>
+            <Button variant='outline' size='icon-sm' onClick={onInventur} title='Inventur' className='sm:hidden'>
+              <ClipboardList className='w-4 h-4' />
+            </Button>
+            <Button variant='outline' onClick={onInventur} className='hidden sm:flex items-center gap-2'>
+              <ClipboardList className='w-4 h-4' />
+              Inventur
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (

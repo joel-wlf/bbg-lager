@@ -110,7 +110,7 @@ export default function Items() {
         filters.push(`name ~ "${search}"`);
       }
       if (orgFilter) {
-        filters.push(`organisation ?= "${orgFilter}"`);
+        filters.push(`organisation ~ "${orgFilter}"`);
       }
       const filter = filters.join(" && ");
 
@@ -211,7 +211,7 @@ export default function Items() {
       }
 
       setIsItemDialogOpen(false);
-      fetchItems(searchTerm);
+      fetchItems(searchTerm, organisationFilter);
     } catch (error) {
       console.error('Error saving item:', error);
       alert('Fehler beim Speichern des Gegenstands');
@@ -228,7 +228,7 @@ export default function Items() {
     try {
       await pb.collection('items').delete(currentItem.id);
       setIsDeleteDialogOpen(false);
-      fetchItems(searchTerm);
+      fetchItems(searchTerm, organisationFilter);
     } catch (error) {
       console.error('Error deleting item:', error);
       alert('Fehler beim Löschen des Gegenstands. Der Gegenstand darf kein Teil einer Entnahme sein.');

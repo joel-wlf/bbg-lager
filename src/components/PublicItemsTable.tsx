@@ -13,11 +13,16 @@ import { Button } from "./ui/button";
 import { AnfrageDialog } from "./AnfrageDialog";
 import { useState } from "react";
 import { MessageSquare, ChevronDown, ChevronRight, Box } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const ORGANISATION_OPTIONS = ["Jugend", "Kinder"];
 
 interface PublicItemsTableProps {
   items: any[];
   isLoading: boolean;
   searchTerm: string;
+  organisationFilter: string | null;
+  onOrganisationFilterChange: (filter: string | null) => void;
   onImageClick: (imageUrl: string) => void;
 }
 
@@ -68,6 +73,8 @@ export function PublicItemsTable({
   items,
   isLoading,
   searchTerm,
+  organisationFilter,
+  onOrganisationFilterChange,
   onImageClick,
 }: PublicItemsTableProps) {
   const [isAnfrageDialogOpen, setIsAnfrageDialogOpen] = useState(false);
@@ -87,14 +94,31 @@ export function PublicItemsTable({
   return (
     <>
       <Card>
-        <div className="p-4 pt-0 border-b">
+        <div className="p-4 pt-0 border-b flex items-center justify-between gap-2">
+          <div className='flex items-center gap-1'>
+            {ORGANISATION_OPTIONS.map((org) => (
+              <Button
+                key={org}
+                variant='outline'
+                size='sm'
+                onClick={() => onOrganisationFilterChange(organisationFilter === org ? null : org)}
+                className={cn(
+                  'text-xs',
+                  organisationFilter === org && 'bg-primary text-primary-foreground hover:bg-primary/90'
+                )}
+              >
+                {org}
+              </Button>
+            ))}
+          </div>
           <Button
-            className='w-full flex items-center gap-2'
-            size="lg"
+            size='sm'
+            className='flex items-center gap-1.5 shrink-0'
             onClick={() => setIsAnfrageDialogOpen(true)}
           >
             <MessageSquare className="w-4 h-4" />
-            Gegenstände anfragen
+            <span className="hidden sm:inline">Gegenstände anfragen</span>
+            <span className="sm:hidden">Anfragen</span>
           </Button>
         </div>
         <CardContent className='p-0'>

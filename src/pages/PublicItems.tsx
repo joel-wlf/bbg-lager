@@ -11,6 +11,7 @@ import { ArrowLeft } from "lucide-react";
 export default function PublicItems() {
   const [items, setItems] = useState<any>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [organisationFilter, setOrganisationFilter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Debounce search term with 300ms delay
@@ -23,20 +24,24 @@ export default function PublicItems() {
     fetchItems();
   }, []);
 
-  // Trigger search when debounced search term changes
+  // Trigger search when debounced search term or organisation filter changes
   useEffect(() => {
-    fetchItems(debouncedSearchTerm);
-  }, [debouncedSearchTerm]);
+    fetchItems(debouncedSearchTerm, organisationFilter);
+  }, [debouncedSearchTerm, organisationFilter]);
 
-  const fetchItems = async (search = "") => {
+  const fetchItems = async (search = "", orgFilter: string | null = null) => {
     setIsLoading(true);
     try {
       pb.autoCancellation(false);
 
-      let filter = "";
+      const filters: string[] = [];
       if (search.trim()) {
-        filter = `name ~ "${search}"`;
+        filters.push(`name ~ "${search}"`);
       }
+      if (orgFilter) {
+        filters.push(`organisation ~ "${orgFilter}"`);
+      }
+      const filter = filters.join(" && ");
 
       const resultList = await pb.collection("items").getFullList({
         filter: filter,
@@ -53,7 +58,7 @@ export default function PublicItems() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchItems(searchTerm);
+    fetchItems(searchTerm, organisationFilter);
   };
 
   // Handle image modal
@@ -99,6 +104,8 @@ export default function PublicItems() {
           items={items}
           isLoading={isLoading}
           searchTerm={searchTerm}
+          organisationFilter={organisationFilter}
+          onOrganisationFilterChange={setOrganisationFilter}
           onImageClick={handleImageClick}
         />
       </div>
