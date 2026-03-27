@@ -13,8 +13,11 @@ export default function Kisten() {
 
   const [kisten, setKisten] = useState<any>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [organisationFilter, setOrganisationFilter] = useState<string | null>(null);
+  const [kistenOrgs, setKistenOrgs] = useState<Map<string, string[]>>(new Map());
+  const [kistenItemCounts, setKistenItemCounts] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Debounce search term with 300ms delay
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
@@ -36,21 +39,56 @@ export default function Kisten() {
     fetchKisten();
   }, []);
 
-  // Trigger search when debounced search term changes
+  // Trigger search when debounced search term or org filter changes
   useEffect(() => {
-    fetchKisten(debouncedSearchTerm);
-  }, [debouncedSearchTerm]);
+    fetchKisten(debouncedSearchTerm, organisationFilter);
+  }, [debouncedSearchTerm, organisationFilter]);
 
-  const fetchKisten = async (search = "") => {
+  const fetchKisten = async (search = "", orgFilter: string | null = null) => {
     setIsLoading(true);
     try {
-      let filter = "";
-      if (search) {
-        filter = `name ~ "${search}"`;
+      pb.autoCancellation(false);
+
+      // Fetch items (minimal fields) to compute per-kiste org membership
+      const allItems = await pb.collection("items").getFullList({
+        fields: "kiste,organisation",
+      });
+
+      const orgMap = new Map<string, Set<string>>();
+      const countMap = new Map<string, number>();
+      for (const item of allItems) {
+        if (item.kiste) {
+          countMap.set(item.kiste, (countMap.get(item.kiste) ?? 0) + 1);
+          if (Array.isArray(item.organisation)) {
+            if (!orgMap.has(item.kiste)) orgMap.set(item.kiste, new Set());
+            for (const org of item.organisation) orgMap.get(item.kiste)!.add(org);
+          }
+        }
+      }
+
+      const newKistenOrgs = new Map<string, string[]>();
+      for (const [id, orgs] of orgMap) newKistenOrgs.set(id, Array.from(orgs).sort());
+      setKistenOrgs(newKistenOrgs);
+      setKistenItemCounts(countMap);
+
+      const filters: string[] = [];
+      if (search) filters.push(`name ~ "${search}"`);
+
+      if (orgFilter) {
+        const matchingIds = Array.from(orgMap.entries())
+          .filter(([, orgs]) => orgs.has(orgFilter))
+          .map(([id]) => id);
+
+        if (matchingIds.length === 0) {
+          setKisten([]);
+          setIsLoading(false);
+          return;
+        }
+        filters.push(`(${matchingIds.map(id => `id = "${id}"`).join(" || ")})`);
       }
 
       const resultList = await pb.collection("kisten").getList(1, 50, {
-        filter,
+        filter: filters.join(" && "),
         sort: "name",
       });
 
@@ -64,7 +102,7 @@ export default function Kisten() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchKisten(searchTerm);
+    fetchKisten(searchTerm, organisationFilter);
   };
 
   // Reset form data
@@ -124,7 +162,7 @@ export default function Kisten() {
       }
 
       setIsKisteDialogOpen(false);
-      fetchKisten(searchTerm);
+      fetchKisten(searchTerm, organisationFilter);
     } catch (error) {
       console.error('Error saving kiste:', error);
       alert('Fehler beim Speichern der Kiste');
@@ -141,7 +179,7 @@ export default function Kisten() {
     try {
       await pb.collection('kisten').delete(currentKiste.id);
       setIsDeleteDialogOpen(false);
-      fetchKisten(searchTerm);
+      fetchKisten(searchTerm, organisationFilter);
     } catch (error) {
       console.error('Error deleting kiste:', error);
       alert('Fehler beim Löschen der Kiste. Die Kiste darf keine Gegenstände enthalten.');
@@ -193,6 +231,10 @@ export default function Kisten() {
           kisten={kisten}
           isLoading={isLoading}
           searchTerm={searchTerm}
+          organisationFilter={organisationFilter}
+          kistenOrgs={kistenOrgs}
+          kistenItemCounts={kistenItemCounts}
+          onOrganisationFilterChange={setOrganisationFilter}
           onCreateKiste={handleCreate}
           onEditKiste={handleEdit}
           onDeleteKiste={handleDelete}
