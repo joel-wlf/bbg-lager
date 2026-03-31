@@ -1,15 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { Check, ChevronDown, Search, X } from "lucide-react";
+import { Check, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { pb } from "@/lib/pocketbase";
 
 interface ItemOption {
@@ -24,7 +17,7 @@ interface ItemOption {
       stellplatz: number;
     };
   };
-  [key: string]: any; // Allow additional PocketBase fields
+  [key: string]: any;
 }
 
 interface ItemMultiSelectProps {
@@ -37,10 +30,9 @@ interface ItemMultiSelectProps {
 export function ItemMultiSelect({
   value,
   onChange,
-  placeholder = "Items auswählen...",
+  placeholder = "Gegenstände suchen...",
   className,
 }: ItemMultiSelectProps) {
-  const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [items, setItems] = useState<ItemOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +47,7 @@ export function ItemMultiSelect({
       const resultList = await pb.collection("items").getFullList({
         sort: "name",
         expand: "kiste",
-        filter: "bestand > 0" // Only show items with stock
+        filter: "bestand > 0",
       });
       setItems(resultList as unknown as ItemOption[]);
     } catch (error) {
@@ -65,189 +57,135 @@ export function ItemMultiSelect({
     }
   };
 
-  // Filter items based on search term
   const filteredItems = useMemo(() => {
     if (!searchTerm.trim()) return items;
-    
     const term = searchTerm.toLowerCase();
-    return items.filter(item => 
-      item.name.toLowerCase().includes(term) ||
-      item.organisation?.some(org => org.toLowerCase().includes(term)) ||
-      item.expand?.kiste?.name.toLowerCase().includes(term)
+    return items.filter(
+      (item) =>
+        item.name.toLowerCase().includes(term) ||
+        item.organisation?.some((org) => org.toLowerCase().includes(term)) ||
+        item.expand?.kiste?.name.toLowerCase().includes(term)
     );
   }, [items, searchTerm]);
 
-  // Get selected items data
-  const selectedItems = useMemo(() => {
-    return items.filter(item => value.includes(item.id));
-  }, [items, value]);
-
   const handleSelect = (itemId: string) => {
     if (value.includes(itemId)) {
-      onChange(value.filter(id => id !== itemId));
+      onChange(value.filter((id) => id !== itemId));
     } else {
       onChange([...value, itemId]);
     }
   };
 
-  const handleRemove = (itemId: string) => {
-    onChange(value.filter(id => id !== itemId));
-  };
-
-  const clearAll = () => {
-    onChange([]);
-  };
-
   return (
-    <div className={cn("space-y-2", className)}>
-      {/* Selected items display */}
-      {selectedItems.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-gray-50">
-          {selectedItems.map((item) => (
-            <Badge
-              key={item.id}
-              variant="secondary"
-              className="flex items-center gap-1 pr-1"
-            >
-              <span className="max-w-32 truncate">{item.name}</span>
-              <button
-                type="button"
-                onClick={() => handleRemove(item.id)}
-                className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
-          {selectedItems.length > 3 && (
-            <Badge variant="outline">
-              +{selectedItems.length - 3} weitere
-            </Badge>
-          )}
-          <Button
+    <div className={cn("flex flex-col gap-2", className)}>
+      {/* Search box */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder={placeholder}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9 pr-9"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+        />
+        {searchTerm && (
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            onClick={clearAll}
-            className="h-6 px-2 text-xs"
+            onClick={() => setSearchTerm("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Count + clear */}
+      {value.length > 0 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground px-1">
+          <span>{value.length} ausgewählt</span>
+          <button
+            type="button"
+            className="text-xs underline hover:text-foreground"
+            onClick={() => onChange([])}
           >
             Alle entfernen
-          </Button>
+          </button>
         </div>
       )}
 
-      {/* Dropdown trigger */}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between"
-          >
-            <span className="truncate">
-              {selectedItems.length === 0
-                ? placeholder
-                : `${selectedItems.length} Item(s) ausgewählt`}
-            </span>
-            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-full p-0" style={{ width: "var(--radix-popover-trigger-width)", maxHeight: "none" }}>
-          <div className="flex flex-col max-h-none">
-            {/* Search input */}
-            <div className="flex items-center border-b px-3 py-2">
-              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-              <Input
-                placeholder="Items suchen..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border-0 p-0 shadow-none focus-visible:ring-0"
-              />
-            </div>
-
-            {/* Items list */}
-            <div className="h-60 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
-              {isLoading ? (
-                <div className="p-4 text-center text-sm text-gray-500">
-                  Lade Items...
-                </div>
-              ) : filteredItems.length === 0 ? (
-                <div className="p-4 text-center text-sm text-gray-500">
-                  {searchTerm ? "Keine Items gefunden" : "Keine Items verfügbar"}
-                </div>
-              ) : (
-                <div className="p-1">
-                  {filteredItems.slice(0, 100).map((item) => { // Limit to 100 for performance
-                    const isSelected = value.includes(item.id);
-                    return (
-                      <div
-                        key={item.id}
-                        className={cn(
-                          "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                          isSelected && "bg-accent"
-                        )}
-                        onClick={() => handleSelect(item.id)}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            isSelected ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium truncate">{item.name}</span>
-                            <span className="text-xs text-gray-500 ml-2">
-                              {item.bestand} Stk.
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            {item.organisation && (
-                              <Badge variant="outline" className="text-xs">
-                                {item.organisation.slice(0, 2).join(", ")}
-                                {item.organisation.length > 2 && " +"}
-                              </Badge>
-                            )}
-                            {item.expand?.kiste && (
-                              <span className="text-xs text-gray-500">
-                                {item.expand.kiste.name} (R{item.expand.kiste.regal}S{item.expand.kiste.stellplatz})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {filteredItems.length > 100 && (
-                    <div className="p-2 text-center text-xs text-gray-500 border-t">
-                      {filteredItems.length - 100} weitere Items... Bitte verfeinern Sie Ihre Suche.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Footer with selection info */}
-            {selectedItems.length > 0 && (
-              <div className="border-t p-2 bg-gray-50">
-                <div className="flex justify-between items-center text-xs text-gray-600">
-                  <span>{selectedItems.length} Item(s) ausgewählt</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearAll}
-                    className="h-6 px-2 text-xs"
-                  >
-                    Alle entfernen
-                  </Button>
-                </div>
-              </div>
-            )}
+      {/* Inline scrollable list */}
+      <div
+        className="border rounded-md overflow-y-auto bg-background"
+        style={{ maxHeight: "45vh", WebkitOverflowScrolling: "touch" }}
+      >
+        {isLoading ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            Lade Gegenstände...
           </div>
-        </PopoverContent>
-      </Popover>
+        ) : filteredItems.length === 0 ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            {searchTerm ? "Keine Gegenstände gefunden" : "Keine Gegenstände verfügbar"}
+          </div>
+        ) : (
+          <div className="divide-y">
+            {filteredItems.map((item) => {
+              const isSelected = value.includes(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleSelect(item.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-3 text-left transition-colors",
+                    "hover:bg-accent active:bg-accent/70 touch-manipulation",
+                    isSelected && "bg-accent"
+                  )}
+                >
+                  {/* Checkbox indicator */}
+                  <div
+                    className={cn(
+                      "shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                      isSelected
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : "border-muted-foreground/40"
+                    )}
+                  >
+                    {isSelected && <Check className="h-3 w-3" />}
+                  </div>
+
+                  {/* Item info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-sm truncate">{item.name}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {item.bestand} Stk.
+                      </span>
+                    </div>
+                    {(item.expand?.kiste || item.organisation?.length) && (
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {item.expand?.kiste && (
+                          <span className="text-xs text-muted-foreground">
+                            {item.expand.kiste.name} · R{item.expand.kiste.regal}S
+                            {item.expand.kiste.stellplatz}
+                          </span>
+                        )}
+                        {item.organisation && item.organisation.length > 0 && (
+                          <Badge variant="outline" className="text-xs h-4 px-1">
+                            {item.organisation.slice(0, 2).join(", ")}
+                            {item.organisation.length > 2 && " +"}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

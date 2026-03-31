@@ -170,8 +170,8 @@ export default function ShelfView3D() {
     }
   };
 
-  // Group kisten by regal number
-  const regalGroups = (): { regal: number; kisten: KisteData[] }[] => {
+  // Group kisten by regal number, collect unique orgs
+  const regalGroups = (): { regal: number; kisten: KisteData[]; orgs: string[] }[] => {
     const map = new Map<number, KisteData[]>();
     for (const k of allKisten) {
       if (k.regal > 0) {
@@ -181,13 +181,35 @@ export default function ShelfView3D() {
     }
     return Array.from(map.entries())
       .sort(([a], [b]) => a - b)
-      .map(([regal, kisten]) => ({ regal, kisten }));
+      .map(([regal, kisten]) => {
+        const orgSet = new Set<string>();
+        for (const k of kisten) {
+          for (const item of k.items) {
+            for (const org of item.organisation ?? []) {
+              if (org) orgSet.add(org);
+            }
+          }
+        }
+        return { regal, kisten, orgs: Array.from(orgSet).sort() };
+      });
   };
 
   const currentShelfKisten =
     selectedRegal !== null
       ? allKisten.filter((k) => k.regal === selectedRegal)
       : [];
+
+  const currentShelfOrgs = (() => {
+    const orgSet = new Set<string>();
+    for (const k of currentShelfKisten) {
+      for (const item of k.items) {
+        for (const org of item.organisation ?? []) {
+          if (org) orgSet.add(org);
+        }
+      }
+    }
+    return Array.from(orgSet).sort();
+  })();
 
   // ── Loading ──────────────────────────────────────────────────────────
   if (isLoading) {
@@ -225,7 +247,7 @@ export default function ShelfView3D() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              {shelves.map(({ regal, kisten }) => (
+              {shelves.map(({ regal, kisten, orgs }) => (
                 <button
                   key={regal}
                   onClick={() => {
@@ -235,12 +257,27 @@ export default function ShelfView3D() {
                   className="group relative bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md active:scale-95 transition-all duration-150 text-left p-4 flex flex-col gap-3"
                 >
                   <MiniShelfPreview kisten={kisten} />
-                  <div>
-                    <div className="font-bold text-base">Regal {regal}</div>
-                    <div className="text-sm text-gray-500">
-                      {kisten.length}{" "}
-                      {kisten.length === 1 ? "Kiste" : "Kisten"}
+                  <div className="flex flex-col gap-1.5">
+                    <div>
+                      <div className="font-bold text-base">Regal {regal}</div>
+                      <div className="text-sm text-gray-500">
+                        {kisten.length}{" "}
+                        {kisten.length === 1 ? "Kiste" : "Kisten"}
+                      </div>
                     </div>
+                    {orgs.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {orgs.map((org) => (
+                          <Badge
+                            key={org}
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0 h-4"
+                          >
+                            {org}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <ChevronRight className="absolute top-4 right-3 w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
                 </button>
