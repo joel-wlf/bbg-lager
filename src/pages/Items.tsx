@@ -7,6 +7,7 @@ import SearchHeader from "@/components/SearchHeader";
 import { ItemsTable } from "@/components/ItemsTable";
 import { ItemDialogs } from "@/components/ItemDialogs";
 import { ItemDetailDialog } from "@/components/ItemDetailDialog";
+import { EntnahmenCrudDialog } from "@/components/EntnahmenCrudDialog";
 import { useDebounce } from "@/hooks/useDebounce";
 
 async function resizeImageTo720p(file: File): Promise<File> {
@@ -73,6 +74,10 @@ export default function Items() {
   // Detail dialog state
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<any>(null);
+
+  // Entnahme dialog state
+  const [isEntnahmeDialogOpen, setIsEntnahmeDialogOpen] = useState(false);
+  const [entnahmePreselectedIds, setEntnahmePreselectedIds] = useState<string[]>([]);
 
   // CRUD Dialog state
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
@@ -242,6 +247,11 @@ export default function Items() {
     setFormData(newFormData);
   };
 
+  const handleCreateEntnahme = (selectedItemIds: string[]) => {
+    setEntnahmePreselectedIds(selectedItemIds);
+    setIsEntnahmeDialogOpen(true);
+  };
+
   // Handle image modal
   const handleImageClick = (imageUrl: string) => {
     setSelectedImage(imageUrl);
@@ -274,6 +284,7 @@ export default function Items() {
           onInventur={() => navigate('/inventur')}
           onShelfView={() => navigate('/shelf-view')}
           onItemClick={handleItemClick}
+          onCreateEntnahme={handleCreateEntnahme}
         />
       </div>
 
@@ -300,6 +311,15 @@ export default function Items() {
             prev.map((i) => (i.id === updated.id ? updated : i))
           );
         }}
+      />
+
+      {/* Entnahme Dialog */}
+      <EntnahmenCrudDialog
+        isOpen={isEntnahmeDialogOpen}
+        onClose={() => setIsEntnahmeDialogOpen(false)}
+        mode="create"
+        onSuccess={() => {}}
+        preselectedItemIds={entnahmePreselectedIds}
       />
 
       {/* CRUD Dialogs */}

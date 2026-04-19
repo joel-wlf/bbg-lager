@@ -10,10 +10,10 @@ import {
 } from "@/components/ui/table";
 import { getImageUrl } from "@/lib/pocketbase";
 import { Button } from "./ui/button";
-import { AnfrageDialog } from "./AnfrageDialog";
 import { useState } from "react";
-import { MessageSquare, ChevronDown, ChevronRight, Box } from "lucide-react";
+import { ChevronDown, ChevronRight, Box, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PublicCheckoutDialog } from "./PublicCheckoutDialog";
 
 const ORGANISATION_OPTIONS = ["Jugend", "Kinder"];
 
@@ -77,8 +77,9 @@ export function PublicItemsTable({
   onOrganisationFilterChange,
   onImageClick,
 }: PublicItemsTableProps) {
-  const [isAnfrageDialogOpen, setIsAnfrageDialogOpen] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   const toggleGroup = (kisteId: string) => {
     setCollapsedGroups((prev) => {
@@ -89,11 +90,20 @@ export function PublicItemsTable({
     });
   };
 
+  const toggleItem = (itemId: string) => {
+    setSelectedItemIds((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
+    );
+  };
+
   const groups = groupByKiste(items);
 
   return (
     <>
       <Card>
+        <div className="px-4 py-2 bg-blue-50 border-b text-xs text-blue-700 flex items-center gap-2">
+          <span>Gegenstände anklicken zum Auswählen — dann unten auf <strong>Zur Buchung</strong> klicken.</span>
+        </div>
         <div className="p-4 pt-0 border-b flex items-center justify-between gap-2">
           <div className='flex items-center gap-1'>
             {ORGANISATION_OPTIONS.map((org) => (
@@ -111,21 +121,13 @@ export function PublicItemsTable({
               </Button>
             ))}
           </div>
-          <Button
-            size='sm'
-            className='flex items-center gap-1.5 shrink-0'
-            onClick={() => setIsAnfrageDialogOpen(true)}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span className="hidden sm:inline">Gegenstände anfragen</span>
-            <span className="sm:hidden">Anfragen</span>
-          </Button>
         </div>
         <CardContent className='p-0'>
           {isLoading ? (
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8"></TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Bestand</TableHead>
                   <TableHead>Bild</TableHead>
@@ -136,6 +138,7 @@ export function PublicItemsTable({
               <TableBody>
                 {[...Array(5)].map((_, i) => (
                   <TableRow key={i} className="animate-pulse">
+                    <TableCell><div className="w-4 h-4 bg-gray-200 rounded"></div></TableCell>
                     <TableCell><div className="h-4 bg-gray-200 rounded w-3/4"></div></TableCell>
                     <TableCell><div className="h-4 bg-gray-200 rounded w-16"></div></TableCell>
                     <TableCell><div className="w-8 h-8 bg-gray-200 rounded"></div></TableCell>
@@ -155,6 +158,7 @@ export function PublicItemsTable({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8"></TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Bestand</TableHead>
                   <TableHead>Bild</TableHead>
@@ -173,7 +177,7 @@ export function PublicItemsTable({
                         className="bg-gray-50 hover:bg-gray-100 cursor-pointer select-none"
                         onClick={() => toggleGroup(group.kisteId)}
                       >
-                        <TableCell colSpan={5} className="py-2">
+                        <TableCell colSpan={6} className="py-2">
                           <div className="flex items-center gap-2">
                             {isCollapsed
                               ? <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
@@ -195,10 +199,25 @@ export function PublicItemsTable({
 
                       {/* Item rows */}
                       {!isCollapsed && group.items.map((item) => (
-                        <TableRow key={item.id}>
+                        <TableRow
+                          key={item.id}
+                          className={cn(
+                            "cursor-pointer",
+                            selectedItemIds.includes(item.id) && "bg-blue-50"
+                          )}
+                          onClick={() => toggleItem(item.id)}
+                        >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selectedItemIds.includes(item.id)}
+                              onChange={() => toggleItem(item.id)}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                          </TableCell>
                           <TableCell className='font-medium'>{item.name}</TableCell>
                           <TableCell>{item.bestand} Stk.</TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             {item.bild ? (
                               <img
                                 src={getImageUrl("items", item.id, item.bild, true)}
@@ -239,10 +258,29 @@ export function PublicItemsTable({
         </CardContent>
       </Card>
 
-      <AnfrageDialog
-        isOpen={isAnfrageDialogOpen}
-        onClose={() => setIsAnfrageDialogOpen(false)}
-        onSuccess={() => {}}
+      {/* Sticky cart bar */}
+      {selectedItemIds.length > 0 && (
+        <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4 z-50">
+          <div className="bg-white border shadow-lg rounded-xl px-4 py-3 flex items-center gap-4 max-w-sm w-full">
+            <div className="flex-1">
+              <p className="font-medium text-sm">{selectedItemIds.length} Gegenstand{selectedItemIds.length !== 1 ? "e" : ""} ausgewählt</p>
+            </div>
+            <Button size="sm" onClick={() => setIsCheckoutOpen(true)} className="flex items-center gap-1.5 shrink-0">
+              <ShoppingCart className="w-4 h-4" />
+              Zur Buchung
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <PublicCheckoutDialog
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        preselectedItemIds={selectedItemIds}
+        onSuccess={() => {
+          setSelectedItemIds([]);
+          setIsCheckoutOpen(false);
+        }}
       />
     </>
   );

@@ -17,29 +17,25 @@ export default function Entnahmen() {
   const [entnahmen, setEntnahmen] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [anfrageItemIds, setAnfrageItemIds] = useState<Set<string>>(new Set());
   const [selectedEntnahme, setSelectedEntnahme] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [highlightedEntnahmeId, setHighlightedEntnahmeId] = useState<string | null>(null);
-  
+
   // CRUD Dialog state
   const [isCrudDialogOpen, setIsCrudDialogOpen] = useState(false);
-  const [crudMode, setCrudMode] = useState<'create' | 'return'>('create');
+  const [crudMode, setCrudMode] = useState<'create' | 'return' | 'edit'>('create');
   const [crudEntnahme, setCrudEntnahme] = useState<any>(null);
-  
+
   // Image Modal state
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
-  // Debounce search term with 300ms delay
+
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   useEffect(() => {
     fetchEntnahmen();
-    fetchAnfrageItems();
   }, []);
 
-  // Trigger search when debounced search term changes
   useEffect(() => {
     fetchEntnahmen(debouncedSearchTerm);
   }, [debouncedSearchTerm]);
@@ -49,37 +45,29 @@ export default function Entnahmen() {
     const highlightId = searchParams.get('highlight');
     if (highlightId) {
       setHighlightedEntnahmeId(highlightId);
-      
-      // Clear the highlight parameter from URL after setting it
       const newSearchParams = new URLSearchParams(searchParams);
       newSearchParams.delete('highlight');
       setSearchParams(newSearchParams, { replace: true });
-      
-      // Remove highlight after 5 seconds
       const timer = setTimeout(() => {
         setHighlightedEntnahmeId(null);
       }, 5000);
-      
       return () => clearTimeout(timer);
     }
   }, [searchParams, setSearchParams]);
 
   const fetchEntnahmen = async (search = "") => {
-    pb.autoCancellation(false)
+    pb.autoCancellation(false);
     setIsLoading(true);
     try {
       let filter = "";
       if (search.trim()) {
         filter = `zweck ~ "${search}" || user.name ~ "${search}"`;
       }
-
       const resultList = await pb.collection("entnahmen").getList(1, 50, {
         filter,
         sort: "-created",
         expand: "user,items,items.kiste"
       });
-
-
       setEntnahmen(resultList.items);
     } catch (error) {
       console.error("Error fetching entnahmen:", error);
@@ -110,28 +98,27 @@ export default function Entnahmen() {
     setIsCrudDialogOpen(true);
   };
 
-  const fetchAnfrageItems = async () => {
+  const handleEditEntnahme = (entnahme: any) => {
+    setCrudMode('edit');
+    setCrudEntnahme(entnahme);
+    setIsCrudDialogOpen(true);
+  };
+
+  const handleDeleteEntnahme = async (entnahme: any) => {
+    if (!confirm(`Entnahme "${entnahme.zweck}" wirklich löschen?`)) return;
     try {
-      pb.autoCancellation(false);
-      const result = await pb.collection("anfragen").getFullList({
-        fields: "id,items",
-      });
-      const ids = new Set<string>();
-      for (const a of result) {
-        for (const itemId of a.items || []) ids.add(itemId);
-      }
-      setAnfrageItemIds(ids);
+      await pb.collection("entnahmen").delete(entnahme.id);
+      fetchEntnahmen(searchTerm);
     } catch (error) {
-      console.error("Error fetching anfrage items:", error);
+      console.error("Error deleting entnahme:", error);
+      alert("Fehler beim Löschen der Entnahme");
     }
   };
 
   const handleCrudSuccess = () => {
     fetchEntnahmen(searchTerm);
-    fetchAnfrageItems();
   };
 
-  // Handle image modal
   const handleImageClick = (imageUrl: string) => {
     setSelectedImage(imageUrl);
     setIsImageModalOpen(true);
@@ -161,10 +148,8 @@ export default function Entnahmen() {
   return (
     <div className='min-h-screen bg-gray-50 p-4'>
       <div className='max-w-4xl mx-auto space-y-4'>
-        {/* Header with Create Button */}
         <EntnahmenHeader onCreateEntnahme={handleCreateEntnahme} />
-        
-        {/* Search Header */}
+
         <SearchHeader
           searchTerm={searchTerm}
           onSearchTermChange={setSearchTerm}
@@ -172,34 +157,20 @@ export default function Entnahmen() {
           isLoading={isLoading}
           placeholder="Entnahmen suchen..."
         />
-        
-        {/* Entnahmen Cards */}
-        {(() => {
-          const conflictsMap: Record<string, string[]> = {};
-          for (const e of entnahmen) {
-            if (e.rein) continue;
-            const names: string[] = [];
-            for (const item of e.expand?.items || []) {
-              if (anfrageItemIds.has(item.id)) names.push(item.name);
-            }
-            if (names.length > 0) conflictsMap[e.id] = names;
-          }
-          return (
-            <EntnahmenCards
-              entnahmen={entnahmen}
-              isLoading={isLoading}
-              searchTerm={searchTerm}
-              onCardClick={handleCardClick}
-              onReturnEntnahme={handleReturnEntnahme}
-              onImageClick={handleImageClick}
-              highlightedEntnahmeId={highlightedEntnahmeId}
-              conflictsMap={conflictsMap}
-            />
-          );
-        })()}
+
+        <EntnahmenCards
+          entnahmen={entnahmen}
+          isLoading={isLoading}
+          searchTerm={searchTerm}
+          onCardClick={handleCardClick}
+          onReturnEntnahme={handleReturnEntnahme}
+          onImageClick={handleImageClick}
+          highlightedEntnahmeId={highlightedEntnahmeId}
+          onEditEntnahme={handleEditEntnahme}
+          onDeleteEntnahme={handleDeleteEntnahme}
+        />
       </div>
 
-      {/* Entnahme Details Dialog */}
       <EntnahmenDialog
         entnahme={selectedEntnahme}
         isOpen={isDialogOpen}
@@ -207,7 +178,6 @@ export default function Entnahmen() {
         onImageClick={handleImageClick}
       />
 
-      {/* CRUD Dialog */}
       <EntnahmenCrudDialog
         isOpen={isCrudDialogOpen}
         onClose={() => setIsCrudDialogOpen(false)}
@@ -216,14 +186,13 @@ export default function Entnahmen() {
         onSuccess={handleCrudSuccess}
       />
 
-      {/* Image Modal */}
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
         <DialogContent className='p-3'>
           {selectedImage && (
             <img
               src={selectedImage}
               alt='Item'
-              className='max-w-full max-h-full '
+              className='max-w-full max-h-full'
             />
           )}
         </DialogContent>

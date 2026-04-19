@@ -13,7 +13,6 @@ import LogInScreen from "./LogInScreen";
 import Items from "./pages/Items";
 import Kisten from "./pages/Kisten";
 import Entnahmen from "./pages/Entnahmen";
-import Anfragen from "./pages/Anfragen";
 import PublicItems from "./pages/PublicItems";
 import Inventur from "./pages/Inventur";
 import ShelfView3D from "./pages/ShelfView3D";
@@ -70,14 +69,6 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Entnahmen />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path='/anfragen'
-            element={
-              <ProtectedRoute>
-                <Anfragen />
               </ProtectedRoute>
             }
           />

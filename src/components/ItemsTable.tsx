@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getImageUrl } from "@/lib/pocketbase";
-import { Edit, Plus, Trash2, MapPin, Archive, ClipboardList, ChevronDown, ChevronRight, Box, LayoutGrid } from "lucide-react";
+import { Edit, Plus, Trash2, MapPin, Archive, ClipboardList, ChevronDown, ChevronRight, Box, LayoutGrid, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { IconColumns3, IconSelectAll } from "@tabler/icons-react";
 
@@ -35,6 +35,7 @@ interface ItemsTableProps {
   onInventur: () => void;
   onShelfView: () => void;
   onItemClick: (item: any) => void;
+  onCreateEntnahme?: (selectedItemIds: string[]) => void;
 }
 
 interface KisteGroup {
@@ -93,9 +94,17 @@ export function ItemsTable({
   onInventur,
   onShelfView,
   onItemClick,
+  onCreateEntnahme,
 }: ItemsTableProps) {
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+
+  const toggleItem = (itemId: string) => {
+    setSelectedItemIds((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
+    );
+  };
 
   const toggleGroup = (kisteId: string) => {
     setCollapsedGroups((prev) => {
@@ -160,6 +169,7 @@ export function ItemsTable({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8"></TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Bestand</TableHead>
                 <TableHead>Bild</TableHead>
@@ -172,6 +182,7 @@ export function ItemsTable({
             <TableBody>
               {[...Array(5)].map((_, i) => (
                 <TableRow key={i} className="animate-pulse">
+                  <TableCell><div className="w-4 h-4 bg-gray-200 rounded"></div></TableCell>
                   <TableCell><div className="h-4 bg-gray-200 rounded w-3/4"></div></TableCell>
                   <TableCell><div className="h-4 bg-gray-200 rounded w-16"></div></TableCell>
                   <TableCell><div className="w-8 h-8 bg-gray-200 rounded"></div></TableCell>
@@ -198,6 +209,7 @@ export function ItemsTable({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8"></TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Bestand</TableHead>
                 <TableHead>Bild</TableHead>
@@ -218,7 +230,7 @@ export function ItemsTable({
                       className="bg-gray-50 hover:bg-gray-100 cursor-pointer select-none"
                       onClick={() => toggleGroup(group.kisteId)}
                     >
-                      <TableCell colSpan={7} className="py-2">
+                      <TableCell colSpan={8} className="py-2">
                         <div className="flex items-center gap-2">
                           {isCollapsed
                             ? <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
@@ -242,9 +254,17 @@ export function ItemsTable({
                     {!isCollapsed && group.items.map((item) => (
                       <TableRow
                         key={item.id}
-                        className="cursor-pointer hover:bg-blue-50/50"
+                        className={cn("cursor-pointer hover:bg-blue-50/50", selectedItemIds.includes(item.id) && "bg-blue-50")}
                         onClick={() => onItemClick(item)}
                       >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedItemIds.includes(item.id)}
+                            onChange={() => toggleItem(item.id)}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                        </TableCell>
                         <TableCell className='font-medium'>{item.name}</TableCell>
                         <TableCell>{item.bestand} Stk.</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
@@ -330,6 +350,21 @@ export function ItemsTable({
           </Table>
         )}
       </CardContent>
+
+      {/* Floating cart bar */}
+      {selectedItemIds.length > 0 && onCreateEntnahme && (
+        <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4 z-50">
+          <div className="bg-white border shadow-lg rounded-xl px-4 py-3 flex items-center gap-4 max-w-sm w-full">
+            <div className="flex-1">
+              <p className="font-medium text-sm">{selectedItemIds.length} Gegenstand{selectedItemIds.length !== 1 ? "e" : ""} ausgewählt</p>
+            </div>
+            <Button size="sm" onClick={() => onCreateEntnahme(selectedItemIds)} className="flex items-center gap-1.5 shrink-0">
+              <ShoppingCart className="w-4 h-4" />
+              Entnahme erstellen
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

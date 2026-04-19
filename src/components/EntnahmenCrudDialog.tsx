@@ -4,16 +4,20 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent } from "./ui/card";
 import { ItemMultiSelect } from "./ItemMultiSelect";
 import {
   CalendarDays,
   MapPin,
   Package,
-  CheckCircle,
   ArrowRight,
   ArrowLeft,
   RotateCcw,
+  CheckCircle2,
+  Truck,
+  User,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { getImageUrl, pb } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,9 +28,10 @@ import { sendNtfyNotification } from "@/lib/notifications";
 interface EntnahmenCrudDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  mode: "create" | "return";
+  mode: "create" | "return" | "edit";
   entnahme?: any;
   onSuccess: () => void;
+  preselectedItemIds?: string[];
 }
 
 export function EntnahmenCrudDialog({
@@ -35,17 +40,22 @@ export function EntnahmenCrudDialog({
   mode,
   entnahme,
   onSuccess,
+  preselectedItemIds,
 }: EntnahmenCrudDialogProps) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [availableItems, setAvailableItems] = useState<any[]>([]);
+  const [bookedItemIds, setBookedItemIds] = useState<Set<string>>(new Set());
+  const [createdEntnahmeId, setCreatedEntnahmeId] = useState<string | null>(null);
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const signatureRef = useRef<SignatureCanvas>(null);
 
-  // Form data for create mode
+  // Form data for create/edit mode
   const [formData, setFormData] = useState({
     zweck: "",
     raus: "",
+    rein_erwartet: "",
     selectedItemIds: [] as string[],
   });
 
@@ -58,16 +68,34 @@ export function EntnahmenCrudDialog({
     if (isOpen) {
       if (mode === "create") {
         setCurrentStep(1);
-        setFormData({ zweck: "", raus: "", selectedItemIds: [] });
+        setFormData({
+          zweck: "",
+          raus: "",
+          rein_erwartet: "",
+          selectedItemIds: preselectedItemIds || [],
+        });
+        setBookedItemIds(new Set());
+        setCreatedEntnahmeId(null);
+        setSelectorOpen((preselectedItemIds?.length ?? 0) === 0);
+        fetchAvailableItems();
+      } else if (mode === "edit" && entnahme) {
+        setCurrentStep(1);
+        setFormData({
+          zweck: entnahme.zweck || "",
+          raus: entnahme.raus ? entnahme.raus.split("T")[0] : "",
+          rein_erwartet: entnahme.rein_erwartet ? entnahme.rein_erwartet.split("T")[0] : "",
+          selectedItemIds: entnahme.items || [],
+        });
+        setBookedItemIds(new Set());
+        setCreatedEntnahmeId(null);
+        setSelectorOpen(false); // edit: already has items, keep collapsed
         fetchAvailableItems();
       } else if (mode === "return") {
         setCurrentStep(3);
-        // Initialize all items as confirmed by default
         const allItemIds = entnahme?.items || [];
         setConfirmedItems(allItemIds);
         setItemProblems({});
         setReturnSignature(null);
-        // Clear signature pad
         setTimeout(() => {
           if (signatureRef.current) {
             signatureRef.current.clear();
@@ -89,6 +117,26 @@ export function EntnahmenCrudDialog({
     }
   };
 
+  const fetchBookedItemIds = async (raus: string, rein_erwartet: string) => {
+    if (!raus || !rein_erwartet) return;
+    try {
+      pb.autoCancellation(false);
+      const result = await pb.collection("entnahmen").getFullList({
+        filter: `rein = "" && raus <= "${rein_erwartet}" && rein_erwartet >= "${raus}"`,
+        fields: "id,items",
+      });
+      const ids = new Set<string>();
+      for (const e of result) {
+        // Skip current entnahme in edit mode
+        if (mode === "edit" && entnahme && e.id === entnahme.id) continue;
+        for (const itemId of e.items || []) ids.add(itemId);
+      }
+      setBookedItemIds(ids);
+    } catch (error) {
+      console.error("Error fetching booked items:", error);
+    }
+  };
+
   const getSelectedItemsData = () => {
     return availableItems.filter((item) =>
       formData.selectedItemIds.includes(item.id)
@@ -107,17 +155,29 @@ export function EntnahmenCrudDialog({
         return;
       }
       if (!formData.raus) {
-        alert("Bitte wählen Sie ein Datum aus.");
+        alert("Bitte wählen Sie ein Ausgabedatum aus.");
         return;
       }
+      if (!formData.rein_erwartet) {
+        alert("Bitte wählen Sie ein erwartetes Rückgabedatum aus.");
+        return;
+      }
+      if (formData.rein_erwartet < formData.raus) {
+        alert("Das Rückgabedatum muss nach dem Ausgabedatum liegen.");
+        return;
+      }
+      await fetchBookedItemIds(formData.raus, formData.rein_erwartet);
       setCurrentStep(2);
-    } else if (currentStep === 2 && mode === "create") {
+    } else if (currentStep === 2) {
       if (formData.selectedItemIds.length === 0) {
         alert("Bitte wählen Sie mindestens einen Gegenstand aus.");
         return;
       }
-      // Create directly after step 2
-      await handleCreate();
+      if (mode === "edit") {
+        await handleUpdate();
+      } else {
+        await handleCreate();
+      }
     }
   };
 
@@ -127,26 +187,67 @@ export function EntnahmenCrudDialog({
 
   const handleCreate = async () => {
     if (!user) return;
-
     setIsLoading(true);
     try {
-      // Convert datetime-local format to ISO string
-      const rausDate = new Date(formData.raus).toISOString();
-      
       const data = {
         zweck: formData.zweck,
-        raus: rausDate,
+        raus: formData.raus,
+        rein_erwartet: formData.rein_erwartet,
         items: formData.selectedItemIds,
         user: user.id,
       };
-
-      console.log("Creating entnahme with data:", data);
-      await pb.collection("entnahmen").create(data);
-      onSuccess();
-      onClose();
+      const created = await pb.collection("entnahmen").create(data);
+      setCreatedEntnahmeId(created.id);
+      setCurrentStep(4); // confirmation step
     } catch (error) {
       console.error("Error creating entnahme:", error);
       alert("Fehler beim Erstellen der Entnahme");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!entnahme) return;
+    setIsLoading(true);
+    try {
+      const data = {
+        zweck: formData.zweck,
+        raus: formData.raus,
+        rein_erwartet: formData.rein_erwartet,
+        items: formData.selectedItemIds,
+      };
+      await pb.collection("entnahmen").update(entnahme.id, data);
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Error updating entnahme:", error);
+      alert("Fehler beim Bearbeiten der Entnahme");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelbstAbholung = async (selbst: boolean) => {
+    if (!createdEntnahmeId) return;
+    setIsLoading(true);
+    try {
+      await pb.collection("entnahmen").update(createdEntnahmeId, { selbst_abholung: selbst });
+
+      const selectedItems = getSelectedItemsData();
+      const itemNames = selectedItems.map((i) => i.name).join(", ");
+      await sendNtfyNotification({
+        title: "Neue Entnahme",
+        tags: "package,outbox_tray",
+        priority: "default",
+        message: `Zweck: ${formData.zweck}\nVon: ${user?.name || user?.email || "Unbekannt"}\nGegenstände (${selectedItems.length}): ${itemNames}\n${selbst ? "Selbst abholen" : "Bereitstellen"}`,
+      });
+
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Error updating selbst_abholung:", error);
+      alert("Fehler beim Speichern");
     } finally {
       setIsLoading(false);
     }
@@ -158,10 +259,9 @@ export function EntnahmenCrudDialog({
       return;
     }
 
-    // Check if all missing items have problem descriptions
     const missingItems = entnahme.items.filter((itemId: string) => !confirmedItems.includes(itemId));
     const missingItemsWithoutProblems = missingItems.filter((itemId: string) => !itemProblems[itemId]?.trim());
-    
+
     if (missingItemsWithoutProblems.length > 0) {
       alert("Bitte beschreiben Sie das Problem für alle fehlenden Gegenstände.");
       return;
@@ -174,20 +274,19 @@ export function EntnahmenCrudDialog({
 
     setIsLoading(true);
     try {
-      const formData = new FormData();
-      formData.append("rein", new Date().toISOString());
-      formData.append("rein_signatur", returnSignature);
-      
-      // Prepare problems data for missing items
+      const fd = new FormData();
+      fd.append("rein", new Date().toISOString());
+      fd.append("rein_signatur", returnSignature);
+
       const problems = missingItems.map((itemId: string) => ({
         item: itemId,
         problem: itemProblems[itemId]
       }));
-      
+
       if (problems.length > 0) {
-        formData.append("problems", JSON.stringify(problems));
+        fd.append("problems", JSON.stringify(problems));
       }
-      await pb.collection("entnahmen").update(entnahme.id, formData);
+      await pb.collection("entnahmen").update(entnahme.id, fd);
 
       const returnedBy = entnahme.expand?.user?.name || user?.name || user?.email || "Unbekannt";
       await sendNtfyNotification({
@@ -235,8 +334,7 @@ export function EntnahmenCrudDialog({
       const newConfirmedItems = prev.includes(itemId)
         ? prev.filter((id) => id !== itemId)
         : [...prev, itemId];
-      
-      // If item is being confirmed (checked), remove any problem description
+
       if (newConfirmedItems.includes(itemId)) {
         setItemProblems((prevProblems) => {
           const newProblems = { ...prevProblems };
@@ -244,7 +342,7 @@ export function EntnahmenCrudDialog({
           return newProblems;
         });
       }
-      
+
       return newConfirmedItems;
     });
   };
@@ -276,10 +374,23 @@ export function EntnahmenCrudDialog({
           <Label htmlFor='raus'>Ausgabedatum</Label>
           <Input
             id='raus'
-            type='datetime-local'
+            type='date'
             value={formData.raus}
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, raus: e.target.value }))
+            }
+          />
+        </div>
+
+        <div>
+          <Label htmlFor='rein_erwartet'>Rückgabe erwartet</Label>
+          <Input
+            id='rein_erwartet'
+            type='date'
+            value={formData.rein_erwartet}
+            min={formData.raus || undefined}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, rein_erwartet: e.target.value }))
             }
           />
         </div>
@@ -299,19 +410,36 @@ export function EntnahmenCrudDialog({
 
     return (
       <div className='space-y-4'>
-                {/* Item Multi Select */}
         <div>
-          <Label htmlFor='items'>Gegenstände auswählen</Label>
-          <ItemMultiSelect
-            value={formData.selectedItemIds}
-            onChange={(values) =>
-              setFormData((prev) => ({ ...prev, selectedItemIds: values }))
-            }
-            placeholder='Gegenstände suchen und auswählen...'
-          />
+          <button
+            type="button"
+            className="flex items-center gap-2 text-sm font-medium mb-1"
+            onClick={() => setSelectorOpen((o) => !o)}
+          >
+            {selectorOpen
+              ? <ChevronDown className="w-4 h-4" />
+              : <ChevronRight className="w-4 h-4" />}
+            Gegenstände hinzufügen / ändern
+          </button>
+          {selectorOpen && (
+            <>
+              {bookedItemIds.size > 0 && (
+                <p className="text-xs text-orange-600 mb-1">
+                  Ausgegraute Gegenstände sind im gewählten Zeitraum bereits gebucht.
+                </p>
+              )}
+              <ItemMultiSelect
+                value={formData.selectedItemIds}
+                onChange={(values) =>
+                  setFormData((prev) => ({ ...prev, selectedItemIds: values }))
+                }
+                placeholder='Gegenstände suchen und auswählen...'
+                disabledItemIds={bookedItemIds}
+              />
+            </>
+          )}
         </div>
 
-        {/* Selected Items with Location Info */}
         {selectedItems.length > 0 && (
           <div className='space-y-3'>
             <h4 className='font-medium'>
@@ -375,26 +503,25 @@ export function EntnahmenCrudDialog({
   };
 
   const renderStep3 = () => {
-    const items =
-      mode === "create" ? getSelectedItemsData() : getReturnItemsData();
+    const items = getReturnItemsData();
 
     return (
       <div className='space-y-6'>
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+          Alle zurückgebrachten Gegenstände sind standardmäßig angehakt. <strong>Haken entfernen</strong> um ein Problem oder fehlenden Gegenstand zu melden.
+        </div>
         <div className='space-y-3 max-h-64 overflow-y-auto'>
-          {items.map((item) => (
+          {items.map((item: any) => (
             <Card key={item.id} className='relative'>
               <CardContent className='px-4'>
                 <div className='space-y-3'>
                   <div className='flex items-center gap-4'>
-                    {mode === "return" && (
-                      <input
-                        type='checkbox'
-                        checked={confirmedItems.includes(item.id)}
-                        onChange={() => toggleItemConfirmation(item.id)}
-                        className='w-4 h-4'
-                      />
-                    )}
-
+                    <input
+                      type='checkbox'
+                      checked={confirmedItems.includes(item.id)}
+                      onChange={() => toggleItemConfirmation(item.id)}
+                      className='w-4 h-4'
+                    />
                     {item.bild && (
                       <img
                         src={getImageUrl("items", item.id, item.bild, true)}
@@ -402,7 +529,6 @@ export function EntnahmenCrudDialog({
                         className='w-12 h-12 object-cover rounded'
                       />
                     )}
-
                     <div className='flex-1'>
                       <h4 className='font-medium'>{item.name}</h4>
                       {item.expand?.kiste && (
@@ -416,9 +542,8 @@ export function EntnahmenCrudDialog({
                       )}
                     </div>
                   </div>
-                  
-                  {/* Problem input field for unchecked items in return mode */}
-                  {mode === "return" && !confirmedItems.includes(item.id) && (
+
+                  {!confirmedItems.includes(item.id) && (
                     <div className='ml-8'>
                       <Label htmlFor={`problem-${item.id}`} className='text-sm text-red-600'>
                         Problem beschreiben (z.B. kaputt, aufgebraucht, verloren):
@@ -438,54 +563,93 @@ export function EntnahmenCrudDialog({
           ))}
         </div>
 
-        {mode === "return" && (
-          <div className="space-y-4">
-            <Label>Rückgabe-Signatur *</Label>
-            <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-              <SignatureCanvas
-                ref={signatureRef}
-                canvasProps={{
-                  height: 200,
-                  className: 'signature-canvas bg-white border rounded w-full',
-                }}
-                backgroundColor="white"
-                onEnd={saveSignature}
-              />
-              <div className="flex justify-between items-center mt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={clearSignature}
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Löschen
-                </Button>
-                {returnSignature && (
-                  <span className="text-sm text-green-600">
-                    ✓ Signatur gespeichert
-                  </span>
-                )}
-              </div>
+        <div className="space-y-4">
+          <Label>Rückgabe-Signatur *</Label>
+          <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+            <SignatureCanvas
+              ref={signatureRef}
+              canvasProps={{
+                height: 200,
+                className: 'signature-canvas bg-white border rounded w-full',
+              }}
+              backgroundColor="white"
+              onEnd={saveSignature}
+            />
+            <div className="flex justify-between items-center mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearSignature}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Löschen
+              </Button>
+              {returnSignature && (
+                <span className="text-sm text-green-600">
+                  ✓ Signatur gespeichert
+                </span>
+              )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     );
   };
 
+  const renderStep4 = () => (
+    <div className='space-y-6 text-center'>
+      <div className='flex flex-col items-center gap-3'>
+        <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center'>
+          <CheckCircle2 className='w-10 h-10 text-green-600' />
+        </div>
+        <h3 className='text-xl font-semibold'>Buchung erfolgreich!</h3>
+        <p className='text-gray-600 text-sm'>
+          Wie werden die Gegenstände bereitgestellt?
+        </p>
+      </div>
+
+      <div className='grid grid-cols-2 gap-4'>
+        <Button
+          variant='outline'
+          className='h-auto py-4 flex flex-col gap-2'
+          onClick={() => handleSelbstAbholung(true)}
+          disabled={isLoading}
+        >
+          <User className='w-8 h-8' />
+          <span className='text-sm font-medium'>Ich hole selber ab</span>
+        </Button>
+        <Button
+          variant='outline'
+          className='h-auto py-4 flex flex-col gap-2'
+          onClick={() => handleSelbstAbholung(false)}
+          disabled={isLoading}
+        >
+          <Truck className='w-8 h-8' />
+          <span className='text-sm font-medium'>Bitte bereitstellen</span>
+        </Button>
+      </div>
+
+      <p className="text-xs text-gray-500 text-center">
+        Bitte bei der Rückgabe die Lagerverwaltung informieren.
+      </p>
+    </div>
+  );
+
   const getStepTitle = () => {
     if (mode === "return") return "Gegenstände zurückgeben";
-
+    if (mode === "edit") {
+      return currentStep === 1 ? "Entnahme bearbeiten - Schritt 1/2" : "Entnahme bearbeiten - Schritt 2/2";
+    }
     switch (currentStep) {
-      case 1:
-        return "Neue Entnahme - Schritt 1/2";
-      case 2:
-        return "Neue Entnahme - Schritt 2/2";
-      default:
-        return "Neue Entnahme";
+      case 1: return "Neue Entnahme - Schritt 1/2";
+      case 2: return "Neue Entnahme - Schritt 2/2";
+      case 4: return "Buchung bestätigen";
+      default: return "Neue Entnahme";
     }
   };
+
+  const isCreateOrEdit = mode === "create" || mode === "edit";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -495,8 +659,8 @@ export function EntnahmenCrudDialog({
         </DialogHeader>
 
         <div className='space-y-6'>
-          {/* Progress indicator for create mode */}
-          {mode === "create" && (
+          {/* Progress indicator */}
+          {isCreateOrEdit && currentStep <= 2 && (
             <div className='flex items-center justify-center space-x-4'>
               {[1, 2].map((step) => (
                 <div key={step} className='flex items-center'>
@@ -522,42 +686,49 @@ export function EntnahmenCrudDialog({
           )}
 
           {/* Step content */}
-          {mode === "create" && currentStep === 1 && renderStep1()}
-          {mode === "create" && currentStep === 2 && renderStep2()}
+          {isCreateOrEdit && currentStep === 1 && renderStep1()}
+          {isCreateOrEdit && currentStep === 2 && renderStep2()}
           {mode === "return" && renderStep3()}
+          {currentStep === 4 && renderStep4()}
 
           {/* Navigation buttons */}
-          <div className='flex justify-between'>
-            <div>
-              {mode === "create" && currentStep > 1 && (
-                <Button variant='outline' onClick={handleBack}>
-                  <ArrowLeft className='w-4 h-4 mr-2' />
-                  Zurück
-                </Button>
-              )}
+          {currentStep !== 4 && (
+            <div className='flex justify-between'>
+              <div>
+                {isCreateOrEdit && currentStep > 1 && (
+                  <Button variant='outline' onClick={handleBack}>
+                    <ArrowLeft className='w-4 h-4 mr-2' />
+                    Zurück
+                  </Button>
+                )}
+              </div>
+
+              <div className='flex gap-2'>
+                {isCreateOrEdit && currentStep === 1 && (
+                  <Button onClick={handleNext}>
+                    Weiter
+                    <ArrowRight className='w-4 h-4 ml-2' />
+                  </Button>
+                )}
+
+                {isCreateOrEdit && currentStep === 2 && (
+                  <Button onClick={handleNext} disabled={isLoading}>
+                    {isLoading
+                      ? "Speichern..."
+                      : mode === "edit"
+                      ? "Speichern"
+                      : "Entnahme erstellen"}
+                  </Button>
+                )}
+
+                {mode === "return" && (
+                  <Button onClick={handleReturn} disabled={isLoading}>
+                    {isLoading ? "Speichern..." : "Rückgabe bestätigen"}
+                  </Button>
+                )}
+              </div>
             </div>
-
-            <div className='flex gap-2'>
-              {mode === "create" && currentStep === 1 && (
-                <Button onClick={handleNext}>
-                  Weiter
-                  <ArrowRight className='w-4 h-4 ml-2' />
-                </Button>
-              )}
-
-              {mode === "create" && currentStep === 2 && (
-                <Button onClick={handleNext} disabled={isLoading}>
-                  {isLoading ? "Erstellen..." : "Entnahme erstellen"}
-                </Button>
-              )}
-
-              {mode === "return" && (
-                <Button onClick={handleReturn} disabled={isLoading}>
-                  {isLoading ? "Speichern..." : "Rückgabe bestätigen"}
-                </Button>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, User, Package, Clock, ArrowLeft, Eye, AlertTriangle } from "lucide-react";
-import { getImageUrl, pb } from "@/lib/pocketbase";
+import { CalendarDays, User, Package, Clock, ArrowLeft, Eye, AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { getImageUrl } from "@/lib/pocketbase";
 
 interface EntnahmenCardsProps {
   entnahmen: any[];
@@ -12,7 +12,8 @@ interface EntnahmenCardsProps {
   onReturnEntnahme: (entnahme: any) => void;
   onImageClick: (imageUrl: string) => void;
   highlightedEntnahmeId?: string | null;
-  conflictsMap?: Record<string, string[]>;
+  onEditEntnahme?: (entnahme: any) => void;
+  onDeleteEntnahme?: (entnahme: any) => void;
 }
 
 export function EntnahmenCards({
@@ -23,7 +24,8 @@ export function EntnahmenCards({
   onReturnEntnahme,
   onImageClick,
   highlightedEntnahmeId,
-  conflictsMap = {},
+  onEditEntnahme,
+  onDeleteEntnahme,
 }: EntnahmenCardsProps) {
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
@@ -32,8 +34,6 @@ export function EntnahmenCards({
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit"
       });
     } catch {
       return dateString;
@@ -50,13 +50,9 @@ export function EntnahmenCards({
 
   const hasProblems = (entnahme: any) => {
     if (!entnahme.problems) return false;
-    
-    // Check if problems is already an array (from database)
     if (Array.isArray(entnahme.problems)) {
       return entnahme.problems.length > 0;
     }
-    
-    // If it's a string, try to parse it
     try {
       const problems = JSON.parse(entnahme.problems);
       return Array.isArray(problems) && problems.length > 0;
@@ -93,13 +89,6 @@ export function EntnahmenCards({
                   <div className="w-4 h-4 bg-gray-200 rounded"></div>
                   <div className="h-4 bg-gray-200 rounded w-32"></div>
                 </div>
-                <div className="flex items-center gap-2 ml-6">
-                  <div className="w-8 h-8 bg-gray-200 rounded"></div>
-                  <div className="flex-1">
-                    <div className="h-3 bg-gray-200 rounded w-3/4 mb-1"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                  </div>
-                </div>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -135,11 +124,11 @@ export function EntnahmenCards({
       {entnahmen.map((entnahme) => {
         const isHighlighted = highlightedEntnahmeId === entnahme.id;
         return (
-        <Card 
-          key={entnahme.id} 
+        <Card
+          key={entnahme.id}
           className={`hover:shadow-lg transition-all duration-500 gap-3 ${
-            isHighlighted 
-              ? 'ring-2 ring-blue-500 shadow-lg bg-blue-50 border-blue-200' 
+            isHighlighted
+              ? 'ring-2 ring-blue-500 shadow-lg bg-blue-50 border-blue-200'
               : ''
           }`}
         >
@@ -150,10 +139,12 @@ export function EntnahmenCards({
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* User Info */}
+            {/* User / Name Info */}
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-gray-500" />
-              <span className="text-sm">{entnahme.expand?.user?.name || "Unbekannt"}</span>
+              <span className="text-sm">
+                {entnahme.expand?.user?.name || entnahme.name || "Unbekannt"}
+              </span>
             </div>
 
             {/* Items */}
@@ -164,18 +155,17 @@ export function EntnahmenCards({
                   {entnahme.expand?.items?.length || 0} Gegenstand(e)
                 </span>
               </div>
-              
-              {/* Show first few items */}
-              {entnahme.expand?.items?.slice(0, 2).map((item: any, index: number) => (
+
+              {entnahme.expand?.items?.slice(0, 2).map((item: any) => (
                 <div key={item.id} className="flex items-center gap-2 ml-6">
                   {getItemImage(item) && (
-                    <img 
-                      src={getItemImage(item)} 
+                    <img
+                      src={getItemImage(item)}
                       alt={item.name}
                       className="w-8 h-8 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onImageClick(getItemImage(item));
+                        onImageClick(getItemImage(item)!);
                       }}
                     />
                   )}
@@ -189,7 +179,7 @@ export function EntnahmenCards({
                   </div>
                 </div>
               ))}
-              
+
               {entnahme.expand?.items?.length > 2 && (
                 <p className="text-xs text-gray-500 ml-6">
                   +{entnahme.expand.items.length - 2} weitere...
@@ -205,6 +195,14 @@ export function EntnahmenCards({
                   Raus: {formatDate(entnahme.raus)}
                 </span>
               </div>
+              {entnahme.rein_erwartet && !entnahme.rein && (
+                <div className="flex items-center gap-2 ml-6">
+                  <Clock className="w-4 h-4 text-orange-400" />
+                  <span className="text-xs text-orange-600">
+                    Rein erwartet: {formatDate(entnahme.rein_erwartet)}
+                  </span>
+                </div>
+              )}
               {entnahme.rein && (
                 <div className="flex items-center gap-2 ml-6">
                   <Clock className="w-4 h-4 text-green-500" />
@@ -215,14 +213,11 @@ export function EntnahmenCards({
               )}
             </div>
 
-            {/* Conflict indicator */}
-            {conflictsMap[entnahme.id] && (
-              <div className="flex items-start gap-2 p-2 bg-yellow-50 border border-yellow-300 rounded">
-                <AlertTriangle className="w-4 h-4 text-yellow-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-yellow-800 font-medium">
-                  Konflikt: {conflictsMap[entnahme.id].join(", ")} {conflictsMap[entnahme.id].length === 1 ? "wird" : "werden"} angefragt
-                </span>
-              </div>
+            {/* Selbst abholung badge */}
+            {!entnahme.rein && entnahme.selbst_abholung !== undefined && entnahme.selbst_abholung !== null && (
+              <Badge variant="outline" className="text-xs">
+                {entnahme.selbst_abholung ? "Selbst abholen" : "Bereitstellen"}
+              </Badge>
             )}
 
             {/* Problems indicator */}
@@ -235,11 +230,11 @@ export function EntnahmenCards({
               </div>
             )}
           </CardContent>
-          
-          <CardFooter className="flex gap-2 pt-0">
-            <Button 
-              variant="outline" 
-              size="sm" 
+
+          <CardFooter className="flex gap-2 pt-0 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 onCardClick(entnahme);
@@ -249,10 +244,35 @@ export function EntnahmenCards({
               <Eye className="w-4 h-4 mr-2" />
               Details
             </Button>
+            {!entnahme.rein && onEditEntnahme && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditEntnahme(entnahme);
+                }}
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+            )}
+            {onDeleteEntnahme && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteEntnahme(entnahme);
+                }}
+                className="text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
             {!entnahme.rein && (
-              <Button 
-                variant="default" 
-                size="sm" 
+              <Button
+                variant="default"
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   onReturnEntnahme(entnahme);

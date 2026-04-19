@@ -25,6 +25,7 @@ interface ItemMultiSelectProps {
   onChange: (value: string[]) => void;
   placeholder?: string;
   className?: string;
+  disabledItemIds?: Set<string>;
 }
 
 export function ItemMultiSelect({
@@ -32,6 +33,7 @@ export function ItemMultiSelect({
   onChange,
   placeholder = "Gegenstände suchen...",
   className,
+  disabledItemIds,
 }: ItemMultiSelectProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [items, setItems] = useState<ItemOption[]>([]);
@@ -132,15 +134,19 @@ export function ItemMultiSelect({
           <div className="divide-y">
             {filteredItems.map((item) => {
               const isSelected = value.includes(item.id);
+              const isDisabled = disabledItemIds?.has(item.id) ?? false;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => handleSelect(item.id)}
+                  onClick={() => !isDisabled && handleSelect(item.id)}
+                  disabled={isDisabled}
+                  title={isDisabled ? "Bereits gebucht in diesem Zeitraum" : undefined}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-3 text-left transition-colors",
                     "hover:bg-accent active:bg-accent/70 touch-manipulation",
-                    isSelected && "bg-accent"
+                    isSelected && "bg-accent",
+                    isDisabled && "opacity-40 cursor-not-allowed pointer-events-none"
                   )}
                 >
                   {/* Checkbox indicator */}
