@@ -11,9 +11,18 @@ import {
   Package,
   User,
   MessageSquare,
+  AlertTriangle,
 } from "lucide-react";
 import { getImageUrl, pb } from "@/lib/pocketbase";
 import { sendNtfyNotification } from "@/lib/notifications";
+
+type BookingPeriod = { raus: string; rein_erwartet: string };
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 
 interface AnfrageDialogProps {
   isOpen: boolean;
@@ -29,6 +38,8 @@ export function AnfrageDialog({
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [availableItems, setAvailableItems] = useState<any[]>([]);
+  const [bookedItemIds, setBookedItemIds] = useState<Set<string>>(new Set());
+  const [itemConflicts, setItemConflicts] = useState<Map<string, BookingPeriod[]>>(new Map());
 
   // Form data
   const [formData, setFormData] = useState({
@@ -42,9 +53,36 @@ export function AnfrageDialog({
     if (isOpen) {
       setCurrentStep(1);
       setFormData({ name: "", zweck: "", raus: "", selectedItemIds: [] });
+      setBookedItemIds(new Set());
+      setItemConflicts(new Map());
       fetchAvailableItems();
     }
   }, [isOpen]);
+
+  const fetchBookedItemIds = async (rausDate: string) => {
+    if (!rausDate) return;
+    try {
+      const dateOnly = rausDate.split("T")[0];
+      pb.autoCancellation(false);
+      const result = await pb.collection("entnahmen").getFullList({
+        filter: `rein = "" && raus <= "${dateOnly}" && rein_erwartet >= "${dateOnly}"`,
+        fields: "id,items,raus,rein_erwartet",
+      });
+      const ids = new Set<string>();
+      const conflicts = new Map<string, BookingPeriod[]>();
+      for (const e of result) {
+        for (const itemId of e.items || []) {
+          ids.add(itemId);
+          if (!conflicts.has(itemId)) conflicts.set(itemId, []);
+          conflicts.get(itemId)!.push({ raus: e.raus, rein_erwartet: e.rein_erwartet });
+        }
+      }
+      setBookedItemIds(ids);
+      setItemConflicts(conflicts);
+    } catch (error) {
+      console.error("Error fetching booked items:", error);
+    }
+  };
 
   const fetchAvailableItems = async () => {
     try {
@@ -63,6 +101,14 @@ export function AnfrageDialog({
       formData.selectedItemIds.includes(item.id)
     );
   };
+
+  const conflictingCartItems = formData.selectedItemIds
+    .filter((id) => bookedItemIds.has(id))
+    .map((id) => ({
+      item: availableItems.find((i) => i.id === id),
+      periods: itemConflicts.get(id) || [],
+    }))
+    .filter((c) => c.item);
 
   const handleNext = async () => {
     if (currentStep === 1) {
@@ -89,10 +135,15 @@ export function AnfrageDialog({
         return;
       }
       
+      await fetchBookedItemIds(formData.raus);
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (formData.selectedItemIds.length === 0) {
         alert("Bitte wählen Sie mindestens einen Gegenstand aus.");
+        return;
+      }
+      if (conflictingCartItems.length > 0) {
+        alert("Bitte entferne alle bereits gebuchten Gegenstände aus der Auswahl.");
         return;
       }
       // Create request after step 2
@@ -212,13 +263,41 @@ export function AnfrageDialog({
         <h3 className='font-semibold'>Schritt 2: Gegenstände auswählen</h3>
       </div>
 
+      {bookedItemIds.size > 0 && (
+        <p className="text-xs text-orange-600">
+          Ausgegraute Gegenstände sind am gewählten Datum bereits gebucht.
+        </p>
+      )}
       <ItemMultiSelect
         value={formData.selectedItemIds}
         onChange={(selectedIds) =>
           setFormData({ ...formData, selectedItemIds: selectedIds })
         }
         placeholder="Gegenstände auswählen..."
+        disabledItemIds={bookedItemIds}
       />
+
+      {conflictingCartItems.length > 0 && (
+        <div className="p-3 bg-red-50 border border-red-300 rounded-lg space-y-2">
+          <div className="flex items-center gap-2 text-red-700 font-medium text-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            Folgende Gegenstände sind am gewählten Datum bereits gebucht:
+          </div>
+          <ul className="space-y-1">
+            {conflictingCartItems.map(({ item, periods }) => (
+              <li key={item.id} className="text-sm text-red-700">
+                <span className="font-medium">{item.name}</span>
+                {periods.map((p: BookingPeriod, i: number) => (
+                  <span key={i} className="text-red-600 ml-1">
+                    ({formatDate(p.raus)} – {formatDate(p.rein_erwartet)})
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-red-600">Bitte entferne diese Gegenstände aus deiner Auswahl, um fortzufahren.</p>
+        </div>
+      )}
 
       {formData.selectedItemIds.length > 0 && (
         <Card className="gap-3">
@@ -307,7 +386,7 @@ export function AnfrageDialog({
             >
               {currentStep === 1 ? "Abbrechen" : "Zurück"}
             </Button>
-            <Button onClick={handleNext} disabled={isLoading}>
+            <Button onClick={handleNext} disabled={isLoading || (currentStep === 2 && conflictingCartItems.length > 0)}>
               {isLoading
                 ? "Wird erstellt..."
                 : currentStep === 1
