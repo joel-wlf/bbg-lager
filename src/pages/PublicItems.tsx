@@ -131,6 +131,7 @@ export default function PublicItems() {
           onOrganisationFilterChange={setOrganisationFilter}
           onImageClick={handleImageClick}
           futureBookings={futureBookings}
+          onBookingCreated={fetchFutureBookings}
         />
       </div>
 

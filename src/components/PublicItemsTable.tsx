@@ -38,6 +38,7 @@ interface PublicItemsTableProps {
   onOrganisationFilterChange: (filter: string | null) => void;
   onImageClick: (imageUrl: string) => void;
   futureBookings?: Map<string, BookingPeriod[]>;
+  onBookingCreated?: () => void;
 }
 
 interface KisteGroup {
@@ -91,6 +92,7 @@ export function PublicItemsTable({
   onOrganisationFilterChange,
   onImageClick,
   futureBookings,
+  onBookingCreated,
 }: PublicItemsTableProps) {
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -322,6 +324,7 @@ export function PublicItemsTable({
         onSuccess={() => {
           setSelectedItemIds([]);
           setIsCheckoutOpen(false);
+          onBookingCreated?.();
         }}
       />
     </>
