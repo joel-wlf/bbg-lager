@@ -73,6 +73,38 @@ export function PublicCheckoutDialog({
     }
   }, [preselectedItemIds]);
 
+  // Reactive conflict detection when dates change (like admin EntnahmenCrudDialog)
+  useEffect(() => {
+    if (!formData.raus || !formData.rein_erwartet || formData.rein_erwartet < formData.raus) {
+      setBookedItemIds(new Set());
+      setItemConflicts(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        pb.autoCancellation(false);
+        const result = await pb.collection("entnahmen").getFullList({
+          filter: `rein = "" && raus <= "${formData.rein_erwartet}" && rein_erwartet >= "${formData.raus}"`,
+          fields: "id,items,raus,rein_erwartet",
+        });
+        if (cancelled) return;
+        const ids = new Set<string>();
+        const conflicts = new Map<string, BookingPeriod[]>();
+        for (const e of result) {
+          for (const itemId of e.items || []) {
+            ids.add(itemId);
+            if (!conflicts.has(itemId)) conflicts.set(itemId, []);
+            conflicts.get(itemId)!.push({ raus: e.raus, rein_erwartet: e.rein_erwartet });
+          }
+        }
+        setBookedItemIds(ids);
+        setItemConflicts(conflicts);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [formData.raus, formData.rein_erwartet]);
+
   const fetchAvailableItems = async () => {
     try {
       pb.autoCancellation(false);
@@ -240,6 +272,25 @@ export function PublicCheckoutDialog({
           onChange={(e) => setFormData((prev) => ({ ...prev, rein_erwartet: e.target.value }))}
         />
       </div>
+      {formData.raus && formData.rein_erwartet && conflictingCartItems.length > 0 && (
+        <div className="p-3 bg-orange-50 border border-orange-300 rounded-lg space-y-1">
+          <div className="flex items-center gap-2 text-orange-700 font-medium text-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            {conflictingCartItems.length} ausgewählte{conflictingCartItems.length !== 1 ? " Gegenstände sind" : "r Gegenstand ist"} im gewählten Zeitraum bereits gebucht
+          </div>
+          <ul className="space-y-0.5 mt-1">
+            {conflictingCartItems.map(({ item, periods }) => (
+              <li key={item.id} className="text-xs text-orange-700">
+                <span className="font-medium">{item.name}</span>
+                {periods.map((p: BookingPeriod, i: number) => (
+                  <span key={i} className="ml-1">({formatDate(p.raus)} – {formatDate(p.rein_erwartet)})</span>
+                ))}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-orange-600">Diese Gegenstände kannst du im nächsten Schritt entfernen.</p>
+        </div>
+      )}
     </div>
   );
 
