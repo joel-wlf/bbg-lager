@@ -16,7 +16,15 @@ import {
   User,
   ChevronDown,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
+
+type BookingPeriod = { raus: string; rein_erwartet: string };
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 import { getImageUrl, pb } from "@/lib/pocketbase";
 import { IconTrash } from "@tabler/icons-react";
 import { sendNtfyNotification } from "@/lib/notifications";
@@ -40,6 +48,7 @@ export function PublicCheckoutDialog({
   const [bookedItemIds, setBookedItemIds] = useState<Set<string>>(new Set());
   const [createdEntnahmeId, setCreatedEntnahmeId] = useState<string | null>(null);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [itemConflicts, setItemConflicts] = useState<Map<string, BookingPeriod[]>>(new Map());
 
   const [formData, setFormData] = useState({
     name: "",
@@ -231,6 +240,11 @@ export function PublicCheckoutDialog({
       selectedItemIds: prev.selectedItemIds.filter((id) => id !== itemId),
     }));
   };
+
+  const conflictingCartItems = formData.selectedItemIds
+    .filter((id) => itemConflicts.has(id))
+    .map((id) => ({ item: availableItems.find((i) => i.id === id)!, periods: itemConflicts.get(id)! }))
+    .filter(({ item }) => item != null);
 
   const renderStep1 = () => (
     <div className='space-y-4'>
