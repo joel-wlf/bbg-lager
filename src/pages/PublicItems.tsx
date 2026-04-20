@@ -13,6 +13,7 @@ export default function PublicItems() {
   const [searchTerm, setSearchTerm] = useState("");
   const [organisationFilter, setOrganisationFilter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [futureBookings, setFutureBookings] = useState<Map<string, { raus: string; rein_erwartet: string }[]>>(new Map());
 
   // Debounce search term with 300ms delay
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -22,12 +23,34 @@ export default function PublicItems() {
 
   useEffect(() => {
     fetchItems();
+    fetchFutureBookings();
   }, []);
 
   // Trigger search when debounced search term or organisation filter changes
   useEffect(() => {
     fetchItems(debouncedSearchTerm, organisationFilter);
   }, [debouncedSearchTerm, organisationFilter]);
+
+  const fetchFutureBookings = async () => {
+    try {
+      pb.autoCancellation(false);
+      const today = new Date().toISOString().split("T")[0];
+      const result = await pb.collection("entnahmen").getFullList({
+        filter: `rein = "" && rein_erwartet >= "${today}"`,
+        fields: "id,items,raus,rein_erwartet",
+      });
+      const map = new Map<string, { raus: string; rein_erwartet: string }[]>();
+      for (const e of result) {
+        for (const itemId of e.items || []) {
+          if (!map.has(itemId)) map.set(itemId, []);
+          map.get(itemId)!.push({ raus: e.raus, rein_erwartet: e.rein_erwartet });
+        }
+      }
+      setFutureBookings(map);
+    } catch (error) {
+      console.error("Error fetching future bookings:", error);
+    }
+  };
 
   const fetchItems = async (search = "", orgFilter: string | null = null) => {
     setIsLoading(true);
@@ -107,6 +130,7 @@ export default function PublicItems() {
           organisationFilter={organisationFilter}
           onOrganisationFilterChange={setOrganisationFilter}
           onImageClick={handleImageClick}
+          futureBookings={futureBookings}
         />
       </div>
 
