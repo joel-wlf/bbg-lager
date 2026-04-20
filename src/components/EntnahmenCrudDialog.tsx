@@ -52,6 +52,7 @@ export function EntnahmenCrudDialog({
   const [bookedItemIds, setBookedItemIds] = useState<Set<string>>(new Set());
   const [itemConflicts, setItemConflicts] = useState<Map<string, BookingPeriod[]>>(new Map());
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showLocations, setShowLocations] = useState(false);
   const [createdEntnahmeId, setCreatedEntnahmeId] = useState<string | null>(null);
   const signatureRef = useRef<SignatureCanvas>(null);
 
@@ -70,6 +71,7 @@ export function EntnahmenCrudDialog({
   useEffect(() => {
     if (!isOpen) return;
     setShowConfirmation(false);
+    setShowLocations(false);
     setCreatedEntnahmeId(null);
     setBookedItemIds(new Set());
     setItemConflicts(new Map());
@@ -203,7 +205,8 @@ export function EntnahmenCrudDialog({
     try {
       await pb.collection("entnahmen").update(createdEntnahmeId, { selbst_abholung: selbst });
       onSuccess();
-      onClose();
+      setShowConfirmation(false);
+      setShowLocations(true);
     } catch {
       alert("Fehler beim Speichern");
     } finally {
@@ -282,6 +285,56 @@ export function EntnahmenCrudDialog({
               </Button>
             </div>
             <p className="text-xs text-gray-500">Bitte bei der Rückgabe die Lagerverwaltung informieren.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // ── Locations screen (after selbst_abholung selected) ───────────────────────
+  if (showLocations) {
+    const selectedItems = getSelectedItemsData();
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-7 h-7 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold">Buchung abgeschlossen!</h3>
+              <p className="text-sm text-gray-600">Hier findest du deine Gegenstände:</p>
+            </div>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {selectedItems.map((item: any) => (
+                <Card key={item.id}>
+                  <CardContent className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      {item.bild && (
+                        <img src={getImageUrl("items", item.id, item.bild, true)} alt={item.name} className="w-10 h-10 object-cover rounded shrink-0" />
+                      )}
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{item.name}</p>
+                        {item.expand?.kiste ? (
+                          <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
+                            <MapPin className="w-3 h-3 shrink-0" />
+                            <span className="font-medium">{item.expand.kiste.name}</span>
+                            {(item.expand.kiste.regal > 0 || item.expand.kiste.stellplatz > 0) && (
+                              <span className="text-gray-400">
+                                · Regal {item.expand.kiste.regal}, Stellplatz {item.expand.kiste.stellplatz}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400 mt-0.5">Kein Lagerort angegeben</p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <Button className="w-full" onClick={onClose}>Fertig</Button>
           </div>
         </DialogContent>
       </Dialog>
