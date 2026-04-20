@@ -16,9 +16,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getImageUrl } from "@/lib/pocketbase";
-import { Edit, Plus, Trash2, MapPin, Archive, ClipboardList, ChevronDown, ChevronRight, Box, LayoutGrid, ShoppingCart } from "lucide-react";
+import { Edit, Plus, Trash2, MapPin, Archive, ClipboardList, ChevronDown, ChevronRight, Box, LayoutGrid, ShoppingCart, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { IconColumns3, IconSelectAll } from "@tabler/icons-react";
+
+type BookingPeriod = { raus: string; rein_erwartet: string };
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 
 const ORGANISATION_OPTIONS = ["Jugend", "Kinder"];
 
@@ -36,6 +44,7 @@ interface ItemsTableProps {
   onShelfView: () => void;
   onItemClick: (item: any) => void;
   onCreateEntnahme?: (selectedItemIds: string[]) => void;
+  futureBookings?: Map<string, BookingPeriod[]>;
 }
 
 interface KisteGroup {
@@ -95,6 +104,7 @@ export function ItemsTable({
   onShelfView,
   onItemClick,
   onCreateEntnahme,
+  futureBookings,
 }: ItemsTableProps) {
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -265,7 +275,34 @@ export function ItemsTable({
                             className="w-4 h-4 cursor-pointer"
                           />
                         </TableCell>
-                        <TableCell className='font-medium'>{item.name}</TableCell>
+                        <TableCell className='font-medium'>
+                          <div className="flex items-center gap-1">
+                            <span>{item.name}</span>
+                            {futureBookings?.has(item.id) && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-orange-500 hover:text-orange-600 shrink-0"
+                                  >
+                                    <AlertTriangle className="w-4 h-4" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-56 p-3" align="start">
+                                  <p className="text-sm font-medium mb-2">Bereits gebucht in:</p>
+                                  <ul className="space-y-1">
+                                    {futureBookings.get(item.id)!.map((p, i) => (
+                                      <li key={i} className="text-xs text-gray-600">
+                                        {formatDate(p.raus)} – {formatDate(p.rein_erwartet)}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{item.bestand} Stk.</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           {item.bild ? (

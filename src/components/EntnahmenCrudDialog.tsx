@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Truck,
   User,
+  AlertTriangle,
 } from "lucide-react";
 import { getImageUrl, pb } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,6 +30,14 @@ interface EntnahmenCrudDialogProps {
   preselectedItemIds?: string[];
 }
 
+type BookingPeriod = { raus: string; rein_erwartet: string };
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 export function EntnahmenCrudDialog({
   isOpen,
   onClose,
@@ -41,6 +50,7 @@ export function EntnahmenCrudDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [availableItems, setAvailableItems] = useState<any[]>([]);
   const [bookedItemIds, setBookedItemIds] = useState<Set<string>>(new Set());
+  const [itemConflicts, setItemConflicts] = useState<Map<string, BookingPeriod[]>>(new Map());
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [createdEntnahmeId, setCreatedEntnahmeId] = useState<string | null>(null);
   const signatureRef = useRef<SignatureCanvas>(null);
@@ -62,6 +72,7 @@ export function EntnahmenCrudDialog({
     setShowConfirmation(false);
     setCreatedEntnahmeId(null);
     setBookedItemIds(new Set());
+    setItemConflicts(new Map());
 
     if (mode === "create") {
       setFormData({ zweck: "", raus: "", rein_erwartet: "", selectedItemIds: preselectedItemIds || [] });
@@ -86,6 +97,7 @@ export function EntnahmenCrudDialog({
   useEffect(() => {
     if (mode === "return" || !formData.raus || !formData.rein_erwartet) {
       setBookedItemIds(new Set());
+      setItemConflicts(new Map());
       return;
     }
     if (formData.rein_erwartet < formData.raus) return;
@@ -96,15 +108,21 @@ export function EntnahmenCrudDialog({
         pb.autoCancellation(false);
         const result = await pb.collection("entnahmen").getFullList({
           filter: `rein = "" && raus <= "${formData.rein_erwartet}" && rein_erwartet >= "${formData.raus}"`,
-          fields: "id,items",
+          fields: "id,items,raus,rein_erwartet",
         });
         if (cancelled) return;
         const ids = new Set<string>();
+        const conflicts = new Map<string, BookingPeriod[]>();
         for (const e of result) {
           if (mode === "edit" && entnahme && e.id === entnahme.id) continue;
-          for (const id of e.items || []) ids.add(id);
+          for (const id of e.items || []) {
+            ids.add(id);
+            if (!conflicts.has(id)) conflicts.set(id, []);
+            conflicts.get(id)!.push({ raus: e.raus, rein_erwartet: e.rein_erwartet });
+          }
         }
         setBookedItemIds(ids);
+        setItemConflicts(conflicts);
       } catch {}
     })();
     return () => { cancelled = true; };
@@ -122,12 +140,22 @@ export function EntnahmenCrudDialog({
   const getSelectedItemsData = () =>
     availableItems.filter((item) => formData.selectedItemIds.includes(item.id));
 
+  // Items currently in cart that conflict with existing bookings
+  const conflictingCartItems = formData.selectedItemIds
+    .filter((id) => bookedItemIds.has(id))
+    .map((id) => ({
+      item: availableItems.find((i) => i.id === id),
+      periods: itemConflicts.get(id) || [],
+    }))
+    .filter((c) => c.item);
+
   const handleSubmit = async () => {
     if (formData.zweck.trim().length < 3) { alert("Zweck muss mindestens 3 Zeichen lang sein."); return; }
     if (!formData.raus) { alert("Bitte Ausgabedatum wählen."); return; }
     if (!formData.rein_erwartet) { alert("Bitte Rückgabedatum wählen."); return; }
     if (formData.rein_erwartet < formData.raus) { alert("Rückgabedatum muss nach dem Ausgabedatum liegen."); return; }
     if (formData.selectedItemIds.length === 0) { alert("Bitte mindestens einen Gegenstand wählen."); return; }
+    if (conflictingCartItems.length > 0) { alert("Bitte entferne alle bereits gebuchten Gegenstände aus der Auswahl."); return; }
 
     setIsLoading(true);
     try {
@@ -149,6 +177,16 @@ export function EntnahmenCrudDialog({
           user: user!.id,
         });
         setCreatedEntnahmeId(created.id);
+
+        // Send notification at creation time – Abholart is updated separately
+        const selectedItems = getSelectedItemsData();
+        await sendNtfyNotification({
+          title: "Neue Entnahme",
+          tags: "package,outbox_tray",
+          priority: "default",
+          message: `Zweck: ${formData.zweck}\nVon: ${user?.name || user?.email || "Unbekannt"}\nGegenstände (${selectedItems.length}): ${selectedItems.map((i) => i.name).join(", ")}`,
+        });
+
         setShowConfirmation(true);
       }
     } catch (error) {
@@ -164,13 +202,6 @@ export function EntnahmenCrudDialog({
     setIsLoading(true);
     try {
       await pb.collection("entnahmen").update(createdEntnahmeId, { selbst_abholung: selbst });
-      const selectedItems = getSelectedItemsData();
-      await sendNtfyNotification({
-        title: "Neue Entnahme",
-        tags: "package,outbox_tray",
-        priority: "default",
-        message: `Zweck: ${formData.zweck}\nVon: ${user?.name || user?.email || "Unbekannt"}\nGegenstände (${selectedItems.length}): ${selectedItems.map((i) => i.name).join(", ")}\n${selbst ? "Selbst abholen" : "Bereitstellen"}`,
-      });
       onSuccess();
       onClose();
     } catch {
@@ -358,6 +389,29 @@ export function EntnahmenCrudDialog({
             </div>
           </div>
 
+          {/* Conflict warning */}
+          {conflictingCartItems.length > 0 && (
+            <div className="p-3 bg-red-50 border border-red-300 rounded-lg space-y-2">
+              <div className="flex items-center gap-2 text-red-700 font-medium text-sm">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                Folgende Gegenstände sind im gewählten Zeitraum bereits gebucht:
+              </div>
+              <ul className="space-y-1">
+                {conflictingCartItems.map(({ item, periods }) => (
+                  <li key={item.id} className="text-sm text-red-700">
+                    <span className="font-medium">{item.name}</span>
+                    {periods.map((p, i) => (
+                      <span key={i} className="text-red-600 ml-1">
+                        ({formatDate(p.raus)} – {formatDate(p.rein_erwartet)})
+                      </span>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-red-600">Bitte entferne diese Gegenstände aus der Auswahl, um fortzufahren.</p>
+            </div>
+          )}
+
           {/* Selected item cards */}
           {selectedItems.length > 0 && (
             <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -389,7 +443,7 @@ export function EntnahmenCrudDialog({
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-            <Button onClick={handleSubmit} disabled={isLoading}>
+            <Button onClick={handleSubmit} disabled={isLoading || conflictingCartItems.length > 0}>
               {isLoading ? "Speichern..." : mode === "edit" ? "Speichern" : "Entnahme erstellen"}
             </Button>
           </div>

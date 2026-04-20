@@ -36,6 +36,14 @@ interface PublicCheckoutDialogProps {
   onSuccess: () => void;
 }
 
+type BookingPeriod = { raus: string; rein_erwartet: string };
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 export function PublicCheckoutDialog({
   isOpen,
   onClose,
@@ -46,6 +54,7 @@ export function PublicCheckoutDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [availableItems, setAvailableItems] = useState<any[]>([]);
   const [bookedItemIds, setBookedItemIds] = useState<Set<string>>(new Set());
+  const [itemConflicts, setItemConflicts] = useState<Map<string, BookingPeriod[]>>(new Map());
   const [createdEntnahmeId, setCreatedEntnahmeId] = useState<string | null>(null);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [itemConflicts, setItemConflicts] = useState<Map<string, BookingPeriod[]>>(new Map());
@@ -69,6 +78,7 @@ export function PublicCheckoutDialog({
         selectedItemIds: preselectedItemIds,
       });
       setBookedItemIds(new Set());
+      setItemConflicts(new Map());
       setCreatedEntnahmeId(null);
       setSelectorOpen(preselectedItemIds.length === 0);
       fetchAvailableItems();
@@ -133,13 +143,19 @@ export function PublicCheckoutDialog({
       pb.autoCancellation(false);
       const result = await pb.collection("entnahmen").getFullList({
         filter: `rein = "" && raus <= "${rein_erwartet}" && rein_erwartet >= "${raus}"`,
-        fields: "id,items",
+        fields: "id,items,raus,rein_erwartet",
       });
       const ids = new Set<string>();
+      const conflicts = new Map<string, BookingPeriod[]>();
       for (const e of result) {
-        for (const itemId of e.items || []) ids.add(itemId);
+        for (const itemId of e.items || []) {
+          ids.add(itemId);
+          if (!conflicts.has(itemId)) conflicts.set(itemId, []);
+          conflicts.get(itemId)!.push({ raus: e.raus, rein_erwartet: e.rein_erwartet });
+        }
       }
       setBookedItemIds(ids);
+      setItemConflicts(conflicts);
     } catch (error) {
       console.error("Error fetching booked items:", error);
     }
@@ -150,6 +166,15 @@ export function PublicCheckoutDialog({
       formData.selectedItemIds.includes(item.id)
     );
   };
+
+  // Items in cart that conflict with existing bookings
+  const conflictingCartItems = formData.selectedItemIds
+    .filter((id) => bookedItemIds.has(id))
+    .map((id) => ({
+      item: availableItems.find((i) => i.id === id),
+      periods: itemConflicts.get(id) || [],
+    }))
+    .filter((c) => c.item);
 
   const handleNext = async () => {
     if (currentStep === 1) {
@@ -180,6 +205,10 @@ export function PublicCheckoutDialog({
         alert("Bitte wählen Sie mindestens einen Gegenstand aus.");
         return;
       }
+      if (conflictingCartItems.length > 0) {
+        alert("Bitte entferne alle bereits gebuchten Gegenstände aus der Auswahl.");
+        return;
+      }
       await handleCreate();
     }
   };
@@ -201,6 +230,17 @@ export function PublicCheckoutDialog({
       };
       const created = await pb.collection("entnahmen").create(data);
       setCreatedEntnahmeId(created.id);
+
+      // Send notification at creation time – Abholart is updated separately
+      const selectedItems = getSelectedItemsData();
+      const itemNames = selectedItems.map((i: any) => i.name).join(", ");
+      await sendNtfyNotification({
+        title: "Neue Entnahme (öffentlich)",
+        tags: "package,outbox_tray",
+        priority: "default",
+        message: `Zweck: ${formData.zweck}\nVon: ${formData.name}\nGegenstände (${selectedItems.length}): ${itemNames}`,
+      });
+
       setCurrentStep(3);
     } catch (error) {
       console.error("Error creating entnahme:", error);
@@ -226,6 +266,7 @@ export function PublicCheckoutDialog({
       });
 
       setCurrentStep(4);
+      onSuccess();
     } catch (error) {
       console.error("Error updating selbst_abholung:", error);
       alert("Fehler beim Speichern");
@@ -340,6 +381,29 @@ export function PublicCheckoutDialog({
             </>
           )}
         </div>
+
+        {/* Conflict warning */}
+        {conflictingCartItems.length > 0 && (
+          <div className="p-3 bg-red-50 border border-red-300 rounded-lg space-y-2">
+            <div className="flex items-center gap-2 text-red-700 font-medium text-sm">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              Folgende Gegenstände sind im gewählten Zeitraum bereits gebucht:
+            </div>
+            <ul className="space-y-1">
+              {conflictingCartItems.map(({ item, periods }) => (
+                <li key={item.id} className="text-sm text-red-700">
+                  <span className="font-medium">{item.name}</span>
+                  {periods.map((p: BookingPeriod, i: number) => (
+                    <span key={i} className="text-red-600 ml-1">
+                      ({formatDate(p.raus)} – {formatDate(p.rein_erwartet)})
+                    </span>
+                  ))}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-red-600">Bitte entferne diese Gegenstände aus deiner Auswahl, um fortzufahren.</p>
+          </div>
+        )}
 
         {selectedItems.length > 0 && (
           <div className='space-y-3'>
@@ -483,7 +547,8 @@ export function PublicCheckoutDialog({
           Bitte bei der Rückgabe die Lagerverwaltung informieren.
         </p>
 
-        <Button className='w-full' onClick={onSuccess}>
+        <Button className='w-full' onClick={
+          }>
           Fertig
         </Button>
       </div>
@@ -499,6 +564,8 @@ export function PublicCheckoutDialog({
       default: return "Buchung";
     }
   };
+
+  const canProceedStep2 = formData.selectedItemIds.length > 0 && conflictingCartItems.length === 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -549,7 +616,10 @@ export function PublicCheckoutDialog({
                   </Button>
                 )}
               </div>
-              <Button onClick={handleNext} disabled={isLoading}>
+              <Button
+                onClick={handleNext}
+                disabled={isLoading || (currentStep === 2 && !canProceedStep2)}
+              >
                 {isLoading
                   ? "Erstellen..."
                   : currentStep === 1
