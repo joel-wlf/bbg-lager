@@ -18,6 +18,13 @@ import {
   ChevronRight,
   AlertTriangle,
 } from "lucide-react";
+
+type BookingPeriod = { raus: string; rein_erwartet: string };
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 import { getImageUrl, pb } from "@/lib/pocketbase";
 import { IconTrash } from "@tabler/icons-react";
 import { sendNtfyNotification } from "@/lib/notifications";
@@ -50,6 +57,7 @@ export function PublicCheckoutDialog({
   const [itemConflicts, setItemConflicts] = useState<Map<string, BookingPeriod[]>>(new Map());
   const [createdEntnahmeId, setCreatedEntnahmeId] = useState<string | null>(null);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [itemConflicts, setItemConflicts] = useState<Map<string, BookingPeriod[]>>(new Map());
 
   const [formData, setFormData] = useState({
     name: "",
@@ -247,6 +255,17 @@ export function PublicCheckoutDialog({
     setIsLoading(true);
     try {
       await pb.collection("entnahmen").update(createdEntnahmeId, { selbst_abholung: selbst });
+
+      const selectedItems = getSelectedItemsData();
+      const itemNames = selectedItems.map((i: any) => i.name).join(", ");
+      await sendNtfyNotification({
+        title: "Neue Entnahme (öffentlich)",
+        tags: "package,outbox_tray",
+        priority: "default",
+        message: `Zweck: ${formData.zweck}\nVon: ${formData.name}\nGegenstände (${selectedItems.length}): ${itemNames}\n${selbst ? "Selbst abholen" : "Bereitstellen"}`,
+      });
+
+      setCurrentStep(4);
       onSuccess();
     } catch (error) {
       console.error("Error updating selbst_abholung:", error);
@@ -262,6 +281,11 @@ export function PublicCheckoutDialog({
       selectedItemIds: prev.selectedItemIds.filter((id) => id !== itemId),
     }));
   };
+
+  const conflictingCartItems = formData.selectedItemIds
+    .filter((id) => itemConflicts.has(id))
+    .map((id) => ({ item: availableItems.find((i) => i.id === id)!, periods: itemConflicts.get(id)! }))
+    .filter(({ item }) => item != null);
 
   const renderStep1 = () => (
     <div className='space-y-4'>
@@ -473,11 +497,70 @@ export function PublicCheckoutDialog({
     </div>
   );
 
+  const renderStep4 = () => {
+    const selectedItems = getSelectedItemsData();
+    return (
+      <div className='space-y-4'>
+        <div className='flex flex-col items-center gap-2 text-center'>
+          <div className='w-12 h-12 bg-green-100 rounded-full flex items-center justify-center'>
+            <CheckCircle2 className='w-7 h-7 text-green-600' />
+          </div>
+          <h3 className='text-lg font-semibold'>Buchung abgeschlossen!</h3>
+          <p className='text-sm text-gray-600'>Hier findest du deine Gegenstände:</p>
+        </div>
+
+        <div className='space-y-2 max-h-80 overflow-y-auto'>
+          {selectedItems.map((item: any) => (
+            <Card key={item.id}>
+              <CardContent className='px-4 py-3'>
+                <div className='flex items-center gap-3'>
+                  {item.bild && (
+                    <img
+                      src={getImageUrl("items", item.id, item.bild, true)}
+                      alt={item.name}
+                      className='w-10 h-10 object-cover rounded shrink-0'
+                    />
+                  )}
+                  <div className='flex-1'>
+                    <p className='font-medium text-sm'>{item.name}</p>
+                    {item.expand?.kiste ? (
+                      <div className='flex items-center gap-1 text-xs text-gray-600 mt-0.5'>
+                        <MapPin className='w-3 h-3 shrink-0' />
+                        <span className='font-medium'>{item.expand.kiste.name}</span>
+                        {(item.expand.kiste.regal > 0 || item.expand.kiste.stellplatz > 0) && (
+                          <span className='text-gray-400'>
+                            · Regal {item.expand.kiste.regal}, Stellplatz {item.expand.kiste.stellplatz}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className='text-xs text-gray-400 mt-0.5'>Kein Lagerort angegeben</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <p className='text-xs text-gray-500 text-center'>
+          Bitte bei der Rückgabe die Lagerverwaltung informieren.
+        </p>
+
+        <Button className='w-full' onClick={
+          }>
+          Fertig
+        </Button>
+      </div>
+    );
+  };
+
   const getStepTitle = () => {
     switch (currentStep) {
       case 1: return "Buchung - Schritt 1/2";
       case 2: return "Buchung - Schritt 2/2";
       case 3: return "Buchung bestätigen";
+      case 4: return "Lagerorte";
       default: return "Buchung";
     }
   };
@@ -521,6 +604,7 @@ export function PublicCheckoutDialog({
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
+          {currentStep === 4 && renderStep4()}
 
           {currentStep < 3 && (
             <div className='flex justify-between'>

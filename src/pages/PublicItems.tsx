@@ -15,7 +15,6 @@ export default function PublicItems() {
   const [isLoading, setIsLoading] = useState(false);
   const [futureBookings, setFutureBookings] = useState<Map<string, { raus: string; rein_erwartet: string }[]>>(new Map());
 
-  // Debounce search term with 300ms delay
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -26,7 +25,6 @@ export default function PublicItems() {
     fetchFutureBookings();
   }, []);
 
-  // Trigger search when debounced search term or organisation filter changes
   useEffect(() => {
     fetchItems(debouncedSearchTerm, organisationFilter);
   }, [debouncedSearchTerm, organisationFilter]);
@@ -84,7 +82,6 @@ export default function PublicItems() {
     fetchItems(searchTerm, organisationFilter);
   };
 
-  // Handle image modal
   const handleImageClick = (imageUrl: string) => {
     setSelectedImage(imageUrl);
     setIsImageModalOpen(true);
@@ -93,7 +90,6 @@ export default function PublicItems() {
   return (
     <div className='min-h-screen bg-gray-50 p-4'>
       <div className='max-w-4xl mx-auto space-y-6'>
-        {/* Header */}
         <div className='pt-6'>
           <div className='flex items-center justify-between mb-4'>
             <Link to='/'>
@@ -113,7 +109,6 @@ export default function PublicItems() {
           </div>
         </div>
 
-        {/* Search Header */}
         <SearchHeader
           searchTerm={searchTerm}
           onSearchTermChange={setSearchTerm}
@@ -121,8 +116,7 @@ export default function PublicItems() {
           isLoading={isLoading}
           placeholder='Gegenstände suchen...'
         />
-        
-        {/* Items Table */}
+
         <PublicItemsTable
           items={items}
           isLoading={isLoading}
@@ -135,7 +129,6 @@ export default function PublicItems() {
         />
       </div>
 
-      {/* Image Modal */}
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
         <DialogContent className='p-3'>
           {selectedImage && (
