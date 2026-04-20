@@ -8,12 +8,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { getImageUrl } from "@/lib/pocketbase";
 import { Button } from "./ui/button";
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Box, ShoppingCart } from "lucide-react";
+import { ChevronDown, ChevronRight, Box, ShoppingCart, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PublicCheckoutDialog } from "./PublicCheckoutDialog";
+
+type BookingPeriod = { raus: string; rein_erwartet: string };
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 
 const ORGANISATION_OPTIONS = ["Jugend", "Kinder"];
 
@@ -24,6 +37,8 @@ interface PublicItemsTableProps {
   organisationFilter: string | null;
   onOrganisationFilterChange: (filter: string | null) => void;
   onImageClick: (imageUrl: string) => void;
+  futureBookings?: Map<string, BookingPeriod[]>;
+  onBookingCreated?: () => void;
 }
 
 interface KisteGroup {
@@ -76,6 +91,8 @@ export function PublicItemsTable({
   organisationFilter,
   onOrganisationFilterChange,
   onImageClick,
+  futureBookings,
+  onBookingCreated,
 }: PublicItemsTableProps) {
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -215,7 +232,34 @@ export function PublicItemsTable({
                               className="w-4 h-4 cursor-pointer"
                             />
                           </TableCell>
-                          <TableCell className='font-medium'>{item.name}</TableCell>
+                          <TableCell className='font-medium'>
+                            <div className="flex items-center gap-1">
+                              <span>{item.name}</span>
+                              {futureBookings?.has(item.id) && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-orange-500 hover:text-orange-600 shrink-0"
+                                    >
+                                      <AlertTriangle className="w-4 h-4" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-56 p-3" align="start">
+                                    <p className="text-sm font-medium mb-2">Bereits gebucht in:</p>
+                                    <ul className="space-y-1">
+                                      {futureBookings.get(item.id)!.map((p, i) => (
+                                        <li key={i} className="text-xs text-gray-600">
+                                          {formatDate(p.raus)} – {formatDate(p.rein_erwartet)}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>{item.bestand} Stk.</TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             {item.bild ? (
@@ -280,6 +324,7 @@ export function PublicItemsTable({
         onSuccess={() => {
           setSelectedItemIds([]);
           setIsCheckoutOpen(false);
+          onBookingCreated?.();
         }}
       />
     </>
